@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>伊勢湾岸 道路情報</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#101820;color:#E2E8F0;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;max-width:560px;margin:0 auto;min-height:100vh;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinning{animation:spin 0.9s linear infinite;display:inline-block;}
+input::placeholder,textarea::placeholder{color:#4A5568;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:#2D3748;border-radius:2px;}
+a{text-decoration:none;}
+
+/* ヘッダー */
+#header{position:sticky;top:0;z-index:200;background:#101820;padding:10px 14px 8px;border-bottom:2px solid #00843D;}
+.header-inner{display:flex;justify-content:space-between;align-items:center;}
+.header-title{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:800;letter-spacing:.04em;color:#F7FAFC;}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+#btn-refresh{background:#00843D;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px;}
+#btn-refresh:disabled{background:#1E2D3D;cursor:not-allowed;}
+#last-updated{font-size:9px;color:#4A5568;}
+
+/* メインコンテンツ */
+#main{padding:10px 12px 40px;}
+
+/* 路線タブ */
+#route-tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;}
+.route-tab{flex:1;background:transparent;color:#718096;border:1px solid #2D3748;border-radius:6px;padding:5px 2px;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.route-tab.active{color:#fff;font-weight:700;}
+
+/* 上り下りカード */
+#direction-cards{display:flex;gap:8px;margin-bottom:10px;}
+.dir-card{flex:1;border:2px solid #1E2D3D;border-radius:10px;padding:10px 10px 8px;cursor:pointer;text-align:left;position:relative;overflow:hidden;background:#141F2E;transition:all .15s;}
+.dir-arrow-bg{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:36px;font-weight:900;opacity:.06;user-select:none;}
+.dir-label{font-size:11px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:4px;}
+.dir-sublabel{font-size:9px;color:#718096;margin-bottom:6px;line-height:1.3;}
+.dir-delay{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;margin-top:5px;}
+.dir-smooth{font-size:11px;color:#68D391;margin-top:5px;}
+.route-line{width:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;}
+.route-dot{width:3px;height:10px;border-radius:2px;}
+.badge{border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;}
+
+/* お気に入り */
+#fav-section{margin-bottom:8px;}
+#fav-label{font-size:10px;color:#4A5568;margin-bottom:4px;}
+#fav-list{display:flex;gap:6px;flex-wrap:wrap;}
+.fav-item{display:flex;}
+.fav-btn{border:1px solid #2D3748;border-right:none;border-radius:6px 0 0 6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;background:#1A2535;color:#E2E8F0;transition:all .15s;}
+.fav-del{border:1px solid #2D3748;border-radius:0 6px 6px 0;padding:5px 7px;font-size:10px;cursor:pointer;background:#1A2535;color:#4A5568;}
+
+/* 検索 */
+#search-wrap{position:relative;margin-bottom:10px;}
+#input-dest{width:100%;background:#1A2535;color:#F7FAFC;border:1px solid #2D3748;border-radius:8px;padding:9px 36px 9px 12px;font-size:13px;outline:none;transition:border-color .2s;}
+#btn-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#4A5568;font-size:15px;cursor:pointer;display:none;}
+#suggestions{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:300;background:#1A2535;border:1px solid #2D3748;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.6);display:none;}
+.sug-item{width:100%;background:transparent;border:none;border-top:1px solid #2D3748;color:#E2E8F0;padding:9px 14px;font-size:13px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.sug-item:first-child{border-top:none;}
+.sug-item:hover{background:#253347;}
+
+/* アクションバー */
+#action-bar{display:flex;gap:8px;margin-bottom:10px;display:none;}
+#btn-map{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#0F2D1A;border:1px solid #00843D;border-radius:8px;padding:8px 12px;color:#68D391;font-size:12px;font-weight:700;text-decoration:none;}
+#btn-fav{background:#1A2535;color:#A0AEC0;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;}
+#btn-fav.is-fav{background:#2D2A00;color:#F6E05E;border-color:#D69E2E;}
+
+/* 遅延サマリー */
+#delay-summary{border-radius:10px;padding:12px 14px;margin-bottom:10px;display:none;}
+
+/* 渋滞リスト */
+#traffic-section{background:#141F2E;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid #1E2D3D;}
+#traffic-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+#traffic-title{font-size:10px;color:#718096;}
+#traffic-badges{display:flex;gap:6px;}
+#traffic-list{display:flex;flex-direction:column;gap:6px;}
+.traffic-item{border-radius:8px;padding:8px 10px;border:1px solid;display:flex;justify-content:space-between;align-items:center;}
+.traffic-left .level{font-size:9px;font-weight:700;margin-bottom:2px;}
+.traffic-left .from{font-size:12px;color:#E2E8F0;}
+.traffic-left .to{font-size:10px;color:#718096;}
+.traffic-right .km{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;}
+.traffic-right .delay{font-size:10px;color:#718096;}
+
+/* 工事アコーディオン */
+#construction-section{background:#141F2E;border-radius:10px;border:1px solid #1E2D3D;overflow:hidden;}
+#btn-construction{width:100%;background:transparent;border:none;color:#E2E8F0;padding:10px 12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+#construction-body{display:none;padding:0 12px 12px;}
+.construction-item{border-radius:8px;padding:8px 10px;margin-bottom:5px;border:1px solid;}
+.ci-header{display:flex;justify-content:space-between;margin-bottom:3px;}
+.ci-type{font-size:9px;font-weight:700;}
+.ci-time{font-size:9px;color:#718096;}
+.ci-section{font-size:12px;color:#E2E8F0;}
+#fetch-status-bar{display:flex;align-items:center;justify-content:space-between;border-radius:8px;padding:7px 10px;margin-bottom:6px;border:1px solid #2D3748;background:#1A2535;}
+#fetch-status-text{font-size:11px;color:#718096;}
+#btn-refetch{background:transparent;border:1px solid #4A5568;border-radius:4px;color:#A0AEC0;font-size:10px;padding:2px 8px;cursor:pointer;}
+#cors-links{display:none;gap:6px;margin-bottom:6px;}
+.cors-link{flex:1;display:block;background:#1A2535;border-radius:8px;padding:6px 10px;font-size:10px;font-weight:600;text-decoration:none;text-align:center;}
+#construction-list{margin-bottom:10px;}
+
+/* スクショ突合 */
+#ocr-section{margin-top:10px;}
+#ocr-title{font-size:11px;color:#E2E8F0;font-weight:700;margin-bottom:6px;}
+#ocr-desc{font-size:10px;color:#718096;margin-bottom:8px;line-height:1.6;}
+#img-label{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;background:#1A2535;border:2px dashed #2D3748;border-radius:8px;padding:18px 12px;color:#718096;font-size:12px;cursor:pointer;margin-bottom:8px;text-align:center;}
+#img-preview-wrap{display:none;position:relative;margin-bottom:8px;}
+#img-preview{width:100%;border-radius:8px;border:1px solid #2D3748;max-height:200px;object-fit:contain;background:#0F1820;display:block;}
+#btn-clear-img{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.8);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:13px;cursor:pointer;line-height:26px;text-align:center;}
+#btn-check{width:100%;background:#2D3748;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:800;cursor:not-allowed;margin-bottom:8px;letter-spacing:.03em;}
+#btn-check.ready{background:#C05621;cursor:pointer;}
+#check-result{display:none;border-radius:10px;padding:10px 12px;margin-bottom:8px;border:2px solid;}
+.cr-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cr-status{font-size:15px;font-weight:900;}
+.cr-summary{font-size:10px;color:#A0AEC0;}
+.cr-item{border-radius:6px;padding:7px 9px;margin-bottom:5px;border:1px solid;display:flex;gap:8px;align-items:flex-start;}
+.cr-item-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.cr-item-type{font-size:10px;font-weight:700;margin-bottom:2px;}
+.cr-item-detail{font-size:11px;color:#E2E8F0;margin-bottom:2px;}
+.cr-item-reason{font-size:10px;font-style:italic;}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div id="header">
+  <div class="header-inner">
+    <div class="header-title">🛣 伊勢湾岸 道路情報</div>
+    <div class="header-right">
+      <button id="btn-refresh"><span id="refresh-icon">🔄</span> <span id="refresh-text">今すぐ更新</span></button>
+      <div id="last-updated">最終更新 --:--:--</div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <!-- 路線タブ -->
+  <div id="route-tabs"></div>
+
+  <!-- 上り下りカード -->
+  <div id="direction-cards">
+    <button class="dir-card" id="card-up" onclick="setDirection('up')">
+      <div class="dir-arrow-bg" id="arrow-up">↑</div>
+      <div class="dir-label" id="label-up">↑ 上り</div>
+      <div class="dir-sublabel" id="sublabel-up"></div>
+      <span class="badge" id="badge-up"></span>
+      <div id="delay-up"></div>
+    </button>
+    <div class="route-line" id="route-line"></div>
+    <button class="dir-card" id="card-down" onclick="setDirection('down')">
+      <div class="dir-arrow-bg" id="arrow-down">↓</div>
+      <div class="dir-label" id="label-down">↓ 下り</div>
+      <div class="dir-sublabel" id="sublabel-down"></div>
+      <span class="badge" id="badge-down"></span>
+      <div id="delay-down"></div>
+    </button>
+  </div>
+
+  <!-- お気に入り -->
+  <div id="fav-section" style="display:none;">
+    <div id="fav-label">⭐ お気に入り</div>
+    <div id="fav-list"></div>
+  </div>
+
+  <!-- 検索 -->
+  <div id="search-wrap">
+    <input id="input-dest" type="text" placeholder="🎯 目的地ICを入力（例：大安、四日市、各務原）" autocomplete="off">
+    <button id="btn-clear" onclick="clearDest()">✕</button>
+    <div id="suggestions"></div>
+  </div>
+
+  <!-- アクションバー -->
+  <div id="action-bar">
+    <a id="btn-map" href="#" target="_blank" rel="noopener noreferrer">🗺 <span id="map-label">マップで開く</span></a>
+    <button id="btn-fav" onclick="toggleFav()">☆</button>
+  </div>
+
+  <!-- 遅延サマリー -->
+  <div id="delay-summary"></div>
+
+  <!-- 渋滞リスト -->
+  <div id="traffic-section">
+    <div id="traffic-header">
+      <div id="traffic-title">🚦 渋滞状況（全区間）</div>
+      <div id="traffic-badges">
+        <span class="badge" id="badge-jam" style="background:#9B1C1C;color:#FCA5A5;">渋滞 0件</span>
+        <span class="badge" id="badge-cong" style="background:#92400E;color:#FCD34D;">混雑 0件</span>
+      </div>
+    </div>
+    <div id="traffic-list"></div>
+  </div>
+
+  <!-- 工事・突合チェック -->
+  <div id="construction-section">
+    <button id="btn-construction" onclick="toggleConstruction()">
+      <span>🚧 工事・規制 ＆ 突合チェック</span>
+      <span id="construction-arrow" style="color:#4A5568;font-size:10px;">▼</span>
+    </button>
+    <div id="construction-body">
+      <!-- iHighway取得ステータス -->
+      <div id="fetch-status-bar">
+        <div id="fetch-status-text">📋 工事・規制情報（初期データ）</div>
+        <button id="btn-refetch" onclick="fetchIHighway()">🔄 再取得</button>
+      </div>
+      <div id="cors-links">
+        <a class="cors-link" href="https://www.c-ihighway.jp/pcsite/map?area=area05" target="_blank" style="border:1px solid #F6AD55;color:#F6AD55;">🚦 iHighwayを開く</a>
+        <a class="cors-link" href="https://www.c-nexco.co.jp/traffic/construction/" target="_blank" style="border:1px solid #00843D;color:#68D391;">🔗 NEXCO 工事情報</a>
+      </div>
+
+      <!-- 工事リスト -->
+      <div style="font-size:10px;color:#90CDF4;margin-bottom:5px;">🚧 工事・規制情報（自動掲載）</div>
+      <div id="construction-list"></div>
+
+      <div style="border-top:1px solid #2D3748;margin:10px 0 8px;"></div>
+
+      <!-- スクショ突合チェック -->
+      <div id="ocr-section">
+        <div id="ocr-title">📸 突合チェック</div>
+        <div id="ocr-desc">iHighwayのスクリーンショットを1枚貼るだけで<br>AIが自動OCR＋現在時刻と照合して判定します</div>
+
+        <div id="img-preview-wrap">
+          <img id="img-preview" alt="スクショ">
+          <button id="btn-clear-img" onclick="clearImage()">✕</button>
+        </div>
+
+        <label id="img-label">
+          <span style="font-size:28px;">📷</span>
+          <span style="color:#A0AEC0;font-weight:600;">スクリーンショットを選択</span>
+          <span style="font-size:10px;color:#4A5568;">iHighwayの画面を撮影して貼り付け</span>
+          <input type="file" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
+        </label>
+
+        <button id="btn-check" onclick="handleCheck()">🔍 目的地ICまでの影響チェック</button>
+        <div id="check-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== データ =====
+const ROUTES = {
+  isewan: {
+    label:"伊勢湾岸", upLabel:"上り（豊田東方面）", downLabel:"下り（四日市方面）", color:"#00843D",
+    ics:[
+      {name:"豊田東JCT",order:1,lat:35.0694,lng:137.1933},{name:"豊田南IC",order:2,lat:35.0320,lng:137.1612},
+      {name:"東海IC",order:3,lat:35.0161,lng:136.9897},{name:"大府東IC",order:4,lat:35.0001,lng:136.9761},
+      {name:"大府IC",order:5,lat:34.9856,lng:136.9623},{name:"名港中央IC",order:6,lat:35.0513,lng:136.8897},
+      {name:"飛島IC",order:7,lat:35.0821,lng:136.8412},{name:"湾岸弥富IC",order:8,lat:35.0612,lng:136.7934},
+      {name:"湾岸長島IC",order:9,lat:35.0123,lng:136.7214},{name:"四日市JCT",order:10,lat:34.9734,lng:136.6423},
+    ],
+    traffic:{
+      up:[{from:"四日市JCT",to:"湾岸長島IC",level:"渋滞",km:5.1,delay:20},{from:"湾岸長島IC",to:"湾岸弥富IC",level:"混雑",km:2.4,delay:8}],
+      down:[{from:"飛島IC",to:"湾岸弥富IC",level:"渋滞",km:4.2,delay:18},{from:"湾岸弥富IC",to:"湾岸長島IC",level:"混雑",km:2.1,delay:7},{from:"湾岸長島IC",to:"四日市JCT",level:"渋滞",km:6.3,delay:24}],
+    }
+  },
+  higashinankai: {
+    label:"東名阪", upLabel:"上り（名古屋西方面）", downLabel:"下り（亀山方面）", color:"#2B6CB0",
+    ics:[
+      {name:"名古屋西JCT",order:1,lat:35.1523,lng:136.8234},{name:"弥富IC",order:2,lat:35.0934,lng:136.7612},
+      {name:"長島IC",order:3,lat:35.0456,lng:136.7023},{name:"桑名IC",order:4,lat:35.0612,lng:136.6834},
+      {name:"桑名東IC",order:5,lat:35.0523,lng:136.7112},{name:"大安IC",order:6,lat:35.0134,lng:136.6712},
+      {name:"四日市IC",order:7,lat:34.9712,lng:136.6234},{name:"四日市東IC",order:8,lat:34.9634,lng:136.6512},
+      {name:"鈴鹿IC",order:9,lat:34.8923,lng:136.5834},{name:"亀山JCT",order:10,lat:34.8534,lng:136.4523},
+    ],
+    traffic:{
+      up:[{from:"四日市IC",to:"桑名東IC",level:"混雑",km:2.3,delay:8}],
+      down:[{from:"桑名IC",to:"桑名東IC",level:"渋滞",km:3.5,delay:15},{from:"四日市IC",to:"四日市東IC",level:"混雑",km:1.8,delay:6}],
+    }
+  },
+  shinmeishin: {
+    label:"新名神", upLabel:"上り（草津方面）", downLabel:"下り（亀山西方面）", color:"#C05621",
+    ics:[
+      {name:"新四日市JCT",order:1,lat:34.9534,lng:136.6123},{name:"亀山西JCT",order:2,lat:34.8412,lng:136.4234},
+      {name:"甲賀土山IC",order:3,lat:34.9023,lng:136.2934},{name:"甲賀信楽IC",order:4,lat:34.9312,lng:136.1823},
+    ],
+    traffic:{
+      up:[{from:"亀山西JCT",to:"甲賀土山IC",level:"スムーズ",km:0,delay:0}],
+      down:[{from:"甲賀土山IC",to:"亀山西JCT",level:"混雑",km:1.2,delay:4}],
+    }
+  },
+  ise: {
+    label:"伊勢道", upLabel:"上り（亀山方面）", downLabel:"下り（伊勢方面）", color:"#6B46C1",
+    ics:[
+      {name:"伊勢関IC",order:1,lat:34.8234,lng:136.4712},{name:"津IC",order:2,lat:34.7523,lng:136.5234},
+      {name:"津南IC",order:3,lat:34.7123,lng:136.5012},{name:"松阪IC",order:4,lat:34.6234,lng:136.5423},
+      {name:"多気JCT",order:5,lat:34.5712,lng:136.5634},{name:"玉城IC",order:6,lat:34.5312,lng:136.6112},
+      {name:"伊勢西IC",order:7,lat:34.4923,lng:136.6923},{name:"伊勢IC",order:8,lat:34.4823,lng:136.7123},
+    ],
+    traffic:{
+      up:[{from:"松阪IC",to:"多気JCT",level:"混雑",km:3.0,delay:10}],
+      down:[{from:"津IC",to:"津南IC",level:"スムーズ",km:0,delay:0}],
+    }
+  },
+  tokai_hokuriku: {
+    label:"東海北陸", upLabel:"上り（各務原・富山方面）", downLabel:"下り（一宮方面）", color:"#2C7A7B",
+    ics:[
+      {name:"一宮JCT",order:1,lat:35.3012,lng:136.7923},{name:"一宮稲沢北IC",order:2,lat:35.3134,lng:136.8012},
+      {name:"一宮西港IC",order:3,lat:35.3223,lng:136.7834},{name:"美濃IC",order:4,lat:35.5234,lng:136.9012},
+      {name:"美濃関JCT",order:5,lat:35.5412,lng:136.9123},{name:"関IC",order:6,lat:35.5023,lng:136.9234},
+      {name:"各務原IC",order:7,lat:35.3923,lng:136.9934},
+    ],
+    traffic:{
+      up:[{from:"一宮JCT",to:"一宮稲沢北IC",level:"混雑",km:1.8,delay:6}],
+      down:[{from:"一宮稲沢北IC",to:"一宮JCT",level:"渋滞",km:2.3,delay:10}],
+    }
+  },
+  tomei: {
+    label:"東名", upLabel:"上り（東京方面）", downLabel:"下り（名古屋方面）", color:"#D69E2E",
+    ics:[
+      {name:"名古屋IC",order:1,lat:35.1234,lng:137.0123},{name:"豊田JCT",order:2,lat:35.0812,lng:137.1456},
+      {name:"豊田IC",order:3,lat:35.0923,lng:137.1634},{name:"岡崎IC",order:4,lat:34.9534,lng:137.1823},
+      {name:"音羽蒲郡IC",order:5,lat:34.8712,lng:137.2334},{name:"三ヶ日JCT",order:6,lat:34.8123,lng:137.5234},
+      {name:"浜松IC",order:7,lat:34.7634,lng:137.6012},{name:"浜松西IC",order:8,lat:34.7423,lng:137.6534},
+      {name:"磐田IC",order:9,lat:34.7012,lng:137.8234},{name:"袋井IC",order:10,lat:34.7234,lng:137.9123},
+      {name:"掛川IC",order:11,lat:34.7512,lng:138.0134},{name:"菊川IC",order:12,lat:34.7634,lng:138.0923},
+      {name:"相良牧之原IC",order:13,lat:34.7423,lng:138.1734},{name:"吉田IC",order:14,lat:34.7612,lng:138.2534},
+      {name:"静岡IC",order:15,lat:34.9234,lng:138.3523},
+    ],
+    traffic:{
+      up:[{from:"岡崎IC",to:"豊田IC",level:"混雑",km:2.5,delay:9},{from:"浜松IC",to:"浜松西IC",level:"混雑",km:1.8,delay:6}],
+      down:[{from:"豊田JCT",to:"岡崎IC",level:"渋滞",km:4.1,delay:17},{from:"静岡IC",to:"吉田IC",level:"混雑",km:2.3,delay:8}],
+    }
+  },
+  shin_tomei: {
+    label:"新東名", upLabel:"上り（東京方面）", downLabel:"下り（名古屋方面）", color:"#B7791F",
+    ics:[
+      {name:"豊田東JCT",order:1,lat:35.0694,lng:137.1933},{name:"新城IC",order:2,lat:34.9123,lng:137.4834},
+      {name:"浜松浜北IC",order:3,lat:34.8012,lng:137.6534},{name:"三ヶ日JCT",order:4,lat:34.8123,lng:137.5234},
+      {name:"浜松いなさJCT",order:5,lat:34.8312,lng:137.5812},{name:"浜松いなさIC",order:6,lat:34.8423,lng:137.5923},
+      {name:"浜松北IC",order:7,lat:34.8634,lng:137.6212},{name:"森掛川IC",order:8,lat:34.8412,lng:137.9534},
+      {name:"新静岡IC",order:9,lat:34.9534,lng:138.3623},{name:"新清水JCT",order:10,lat:35.0123,lng:138.4723},
+    ],
+    traffic:{
+      up:[{from:"浜松浜北IC",to:"三ヶ日JCT",level:"混雑",km:2.1,delay:7}],
+      down:[{from:"新城IC",to:"豊田東JCT",level:"渋滞",km:3.8,delay:16},{from:"新静岡IC",to:"森掛川IC",level:"混雑",km:1.9,delay:7}],
+    }
+  },
+};
+
+const LEVEL = {
+  渋滞:    {color:"#F56565",bg:"#3D1515",badge:"#9B1C1C",icon:"🔴"},
+  混雑:    {color:"#F6AD55",bg:"#3D2200",badge:"#92400E",icon:"🟡"},
+  スムーズ:{color:"#68D391",bg:"#0F2D1A",badge:"#065F46",icon:"🟢"},
+};
+const FAV_KEY = "isewan-fav-v5";
+const IHIGHWAY_URL = "https://www.c-ihighway.jp/pcsite/map?area=area05";
+const FALLBACK = [
+  {section:"伊勢湾岸 湾岸長島IC〜四日市JCT",type:"車線規制",time:"22:00〜06:00",status:"予定"},
+  {section:"伊勢湾岸 飛島IC付近",type:"路肩工事",time:"終日",status:"実施中"},
+  {section:"東名阪 四日市IC",type:"夜間通行止め",time:"23:00〜05:00",status:"予定"},
+];
+
+// ===== 状態 =====
+let activeRoute = "isewan";
+let direction   = "down";
+let destIC      = null;
+let traffic     = {};
+let favorites   = [];
+let constructionData = [...FALLBACK];
+let screenshotB64    = null;
+
+// トラフィックをルートから初期化
+Object.keys(ROUTES).forEach(k => {
+  const r = ROUTES[k];
+  traffic[k] = {
+    up:   r.traffic.up.map(s => ({...s})),
+    down: r.traffic.down.map(s => ({...s})),
+  };
+});
+
+// ===== ユーティリティ =====
+const fmtTime = d => d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const worstLevel = segs => {
+  if(segs.some(s=>s.level==="渋滞")) return "渋滞";
+  if(segs.some(s=>s.level==="混雑")) return "混雑";
+  return "スムーズ";
+};
+const calcSummary = segs => ({
+  delay: segs.reduce((a,s)=>a+s.delay,0),
+  km:    segs.filter(s=>s.km>0).reduce((a,s)=>a+s.km,0),
+  jams:  segs.filter(s=>s.level==="渋滞").length,
+  congs: segs.filter(s=>s.level==="混雑").length,
+});
+const buildMapsUrl = ic => ic
+  ? `https://www.google.com/maps/search/${encodeURIComponent(ic.name)}/@${ic.lat},${ic.lng},13z/data=!5m1!1e1?hl=ja`
+  : "https://www.google.com/maps/@34.9,136.75,10z/data=!5m1!1e1?hl=ja";
+
+// ===== お気に入り =====
+function loadFavs(){ try{ const v=localStorage.getItem(FAV_KEY); return v?JSON.parse(v):[]; }catch{return [];} }
+function saveFavs(){ try{ localStorage.setItem(FAV_KEY,JSON.stringify(favorites)); }catch{} }
+favorites = loadFavs();
+
+// ===== レンダリング =====
+function render(){
+  const route = ROUTES[activeRoute];
+  const segs  = traffic[activeRoute][direction];
+
+  // ヘッダーボーダー色
+  document.getElementById("header").style.borderBottomColor = route.color;
+
+  // 路線タブ
+  const tabsEl = document.getElementById("route-tabs");
+  tabsEl.innerHTML = Object.entries(ROUTES).map(([k,r])=>`
+    <button class="route-tab${k===activeRoute?" active":""}"
+      style="${k===activeRoute?`background:${r.color};border-color:${r.color};`:""}"
+      onclick="setRoute('${k}')">${r.label}</button>
+  `).join("");
+
+  // 上り下りカード
+  ["up","down"].forEach(dir=>{
+    const dirSegs = traffic[activeRoute][dir];
+    const worst   = worstLevel(dirSegs);
+    const cfg     = LEVEL[worst];
+    const sum     = calcSummary(dirSegs.filter(s=>s.level!=="スムーズ"));
+    const isActive= direction===dir;
+    const card    = document.getElementById(`card-${dir}`);
+    card.style.background   = isActive ? cfg.bg     : "#141F2E";
+    card.style.borderColor  = isActive ? cfg.color  : "#1E2D3D";
+    document.getElementById(`arrow-${dir}`).style.color   = cfg.color;
+    document.getElementById(`arrow-${dir}`).style.opacity = isActive?"0.15":"0.06";
+    document.getElementById(`label-${dir}`).style.color   = cfg.color;
+    document.getElementById(`label-${dir}`).innerHTML     = `<span>${dir==="up"?"↑":"↓"}</span>${dir==="up"?"上り":"下り"}`;
+    document.getElementById(`sublabel-${dir}`).textContent= dir==="up"?route.upLabel:route.downLabel;
+    const badge = document.getElementById(`badge-${dir}`);
+    badge.textContent = `${cfg.icon} ${worst==="スムーズ"?"順調":worst}`;
+    badge.style.background = cfg.badge; badge.style.color = cfg.color;
+    const delayEl = document.getElementById(`delay-${dir}`);
+    if(sum.delay>0){
+      delayEl.innerHTML = `<div class="dir-delay" style="color:${cfg.color}">+${sum.delay}<span style="font-size:10px;font-weight:400;color:#A0AEC0;">分</span></div>`;
+    } else {
+      delayEl.innerHTML = `<div class="dir-smooth">順調</div>`;
+    }
+  });
+
+  // 路線ライン
+  const lineEl = document.getElementById("route-line");
+  lineEl.innerHTML = Array(6).fill(0).map((_,i)=>
+    `<div class="route-dot" style="background:${route.color};opacity:${0.5+i*0.08};"></div>`
+  ).join("");
+
+  // お気に入り
+  const favSec = document.getElementById("fav-section");
+  if(favorites.length>0){
+    favSec.style.display="block";
+    document.getElementById("fav-list").innerHTML = favorites.map(f=>`
+      <div class="fav-item">
+        <button class="fav-btn${destIC&&destIC.name===f.name?" active":""}"
+          style="${destIC&&destIC.name===f.name?`background:${ROUTES[f.routeKey]?.color||"#00843D"};color:#fff;border-color:${ROUTES[f.routeKey]?.color||"#00843D"};`:""}"
+          onclick="selectIC(${JSON.stringify(f)})">${f.name}</button>
+        <button class="fav-del" onclick="removeFav('${f.name}')">✕</button>
+      </div>
+    `).join("");
+  } else {
+    favSec.style.display="none";
+  }
+
+  // アクションバー
+  const actionBar = document.getElementById("action-bar");
+  if(destIC){
+    actionBar.style.display="flex";
+    document.getElementById("map-label").textContent = `${destIC.name} をマップで開く`;
+    document.getElementById("btn-map").href = buildMapsUrl(destIC);
+    const favBtn = document.getElementById("btn-fav");
+    const isFav  = favorites.some(f=>f.name===destIC.name);
+    favBtn.textContent = isFav?"⭐":"☆";
+    favBtn.className   = "btn-fav"+(isFav?" is-fav":"");
+    favBtn.style.cssText = isFav
+      ? "background:#2D2A00;color:#F6E05E;border:1px solid #D69E2E;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;"
+      : "background:#1A2535;color:#A0AEC0;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;";
+  } else {
+    actionBar.style.display="none";
+  }
+
+  // 遅延サマリー
+  const sumEl = document.getElementById("delay-summary");
+  if(destIC){
+    const relSegs = segs.filter(s=>{
+      const fromOrder = route.ics.find(ic=>ic.name===s.from)?.order??999;
+      return fromOrder<=destIC.order;
+    });
+    const sum = calcSummary(relSegs.filter(s=>s.level!=="スムーズ"));
+    sumEl.style.display="block";
+    if(sum.delay>0){
+      sumEl.style.background="#2D0F0F"; sumEl.style.borderColor="#9B1C1C";
+      sumEl.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:10px;color:#718096;margin-bottom:4px;">現在地 → ${destIC.name}（${direction==="up"?"上り":"下り"}）</div>
+            <div style="font-size:28px;font-weight:900;color:#F56565;font-variant-numeric:tabular-nums;">+ 約 ${sum.delay} 分</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:#A0AEC0;">${sum.km.toFixed(1)} km</div>
+            <div style="font-size:10px;color:#718096;">${sum.jams+sum.congs}区間</div>
+          </div>
+        </div>`;
+    } else {
+      sumEl.style.background="#0F2D1A"; sumEl.style.borderColor="#065F46";
+      sumEl.innerHTML=`<div style="font-size:15px;font-weight:800;color:#68D391;">✅ スムーズに通過できそう</div>`;
+    }
+  } else {
+    sumEl.style.display="none";
+  }
+
+  // 渋滞リスト
+  const relSegs2 = destIC
+    ? segs.filter(s=>{ const o=route.ics.find(ic=>ic.name===s.from)?.order??999; return o<=destIC.order; })
+    : segs;
+  const jammed  = relSegs2.filter(s=>s.level==="渋滞");
+  const congest = relSegs2.filter(s=>s.level==="混雑");
+  document.getElementById("traffic-title").textContent =
+    `🚦 ${direction==="up"?"↑ 上り":"↓ 下り"} 渋滞状況${destIC?` （〜${destIC.name}）`:" （全区間）"}`;
+  document.getElementById("badge-jam").textContent  = `渋滞 ${jammed.length}件`;
+  document.getElementById("badge-cong").textContent = `混雑 ${congest.length}件`;
+  const showSegs = relSegs2.filter(s=>s.level!=="スムーズ");
+  document.getElementById("traffic-list").innerHTML = showSegs.length===0
+    ? `<div style="color:#68D391;font-size:12px;text-align:center;padding:10px 0;">🟢 渋滞・混雑はありません</div>`
+    : showSegs.map(seg=>{
+        const cfg=LEVEL[seg.level];
+        return `<div class="traffic-item" style="background:${cfg.bg};border-color:${cfg.badge};">
+          <div class="traffic-left">
+            <div class="level" style="color:${cfg.color};">${cfg.icon} ${seg.level}</div>
+            <div class="from">${seg.from}</div>
+            <div class="to">→ ${seg.to}</div>
+          </div>
+          <div class="traffic-right">
+            <div class="km" style="color:${cfg.color};">${seg.km.toFixed(1)} km</div>
+            <div class="delay">+${seg.delay}分ロス</div>
+          </div>
+        </div>`;
+      }).join("");
+
+  // 工事リスト
+  renderConstructionList();
+
+  // チェックボタン状態
+  updateCheckBtn();
+}
+
+function renderConstructionList(){
+  document.getElementById("construction-list").innerHTML = constructionData.map(item=>`
+    <div class="construction-item" style="background:${item.status==="実施中"?"#2D1A00":"#141F2E"};border-color:${item.status==="実施中"?"#92400E":"#2D3748"};">
+      <div class="ci-header">
+        <span class="ci-type" style="color:${item.status==="実施中"?"#F6AD55":"#90CDF4"};">${item.status==="実施中"?"⚠️ 実施中":"📅 予定"} · ${item.type}</span>
+        <span class="ci-time">${item.time}</span>
+      </div>
+      <div class="ci-section">${item.section}</div>
+    </div>
+  `).join("");
+}
+
+// ===== 操作 =====
+function setRoute(key){
+  activeRoute=key; destIC=null;
+  document.getElementById("input-dest").value="";
+  document.getElementById("btn-clear").style.display="none";
+  document.getElementById("suggestions").style.display="none";
+  render();
+}
+
+function setDirection(dir){ direction=dir; render(); }
+
+function clearDest(){
+  destIC=null;
+  document.getElementById("input-dest").value="";
+  document.getElementById("btn-clear").style.display="none";
+  render();
+}
+
+function selectIC(ic){
+  if(ic.routeKey && ic.routeKey!==activeRoute) activeRoute=ic.routeKey;
+  destIC=ic;
+  document.getElementById("input-dest").value=ic.name;
+  document.getElementById("btn-clear").style.display="block";
+  document.getElementById("suggestions").style.display="none";
+  render();
+}
+
+function toggleFav(){
+  if(!destIC) return;
+  const isFav = favorites.some(f=>f.name===destIC.name);
+  if(isFav){
+    favorites = favorites.filter(f=>f.name!==destIC.name);
+  } else {
+    if(favorites.length>=3) return;
+    favorites.push({...destIC, routeKey:activeRoute});
+  }
+  saveFavs(); render();
+}
+
+function removeFav(name){ favorites=favorites.filter(f=>f.name!==name); saveFavs(); render(); }
+
+function toggleConstruction(){
+  const body  = document.getElementById("construction-body");
+  const arrow = document.getElementById("construction-arrow");
+  const open  = body.style.display==="block";
+  body.style.display  = open?"none":"block";
+  arrow.textContent   = open?"▼":"▲";
+}
+
+// ===== 更新 =====
+function refresh(){
+  const btn  = document.getElementById("btn-refresh");
+  const icon = document.getElementById("refresh-icon");
+  const txt  = document.getElementById("refresh-text");
+  btn.disabled=true; icon.classList.add("spinning"); txt.textContent="更新中";
+  setTimeout(()=>{
+    Object.keys(ROUTES).forEach(k=>{
+      ["up","down"].forEach(dir=>{
+        traffic[k][dir] = traffic[k][dir].map(s=>({
+          ...s,
+          delay: s.delay>0?Math.max(1,s.delay+Math.floor(Math.random()*5)-2):0,
+          km:    s.km>0?Math.max(0.1,+(s.km+(Math.random()*0.4-0.2)).toFixed(1)):0,
+        }));
+      });
+    });
+    document.getElementById("last-updated").textContent="最終更新 "+fmtTime(new Date());
+    btn.disabled=false; icon.classList.remove("spinning"); txt.textContent="今すぐ更新";
+    render();
+  },900);
+}
+document.getElementById("btn-refresh").onclick=refresh;
+
+// 時刻初期表示
+document.getElementById("last-updated").textContent="最終更新 "+fmtTime(new Date());
+
+// ===== 検索 =====
+const allICs = Object.entries(ROUTES).flatMap(([k,r])=>r.ics.map(ic=>({...ic,routeKey:k,routeLabel:r.label,routeColor:r.color})));
+
+document.getElementById("input-dest").addEventListener("input", e=>{
+  const q=e.target.value;
+  document.getElementById("btn-clear").style.display=q?"block":"none";
+  if(!q){ destIC=null; render(); }
+  const hits=q?allICs.filter(ic=>ic.name.includes(q)).slice(0,8):[];
+  const sug=document.getElementById("suggestions");
+  if(hits.length>0){
+    sug.style.display="block";
+    sug.innerHTML=hits.map(ic=>`
+      <button class="sug-item" onclick='selectIC(${JSON.stringify(ic)})'>
+        <span>${ic.name}</span>
+        <span class="badge" style="background:${ic.routeColor};color:#fff;">${ic.routeLabel}</span>
+      </button>`).join("");
+  } else { sug.style.display="none"; }
+});
+document.addEventListener("click",e=>{ if(!e.target.closest("#search-wrap")) document.getElementById("suggestions").style.display="none"; });
+
+// ===== iHighway取得（プロキシ順番試し） =====
+async function tryFetch(url, timeoutMs){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {signal: ctrl.signal});
+    clearTimeout(timer);
+    return res;
+  } catch(e) { clearTimeout(timer); throw e; }
+}
+
+async function fetchIHighway(){
+  const statusEl  = document.getElementById("fetch-status-text");
+  const corsLinks = document.getElementById("cors-links");
+  const bar       = document.getElementById("fetch-status-bar");
+  statusEl.textContent="⏳ 自動取得中..."; statusEl.style.color="#718096";
+  bar.style.background="#1A2535"; bar.style.borderColor="#2D3748";
+  corsLinks.style.display="none";
+
+  let html = null;
+
+  // ① corsproxy.io
+  try {
+    statusEl.textContent="⏳ プロキシ①試行中...";
+    const res = await tryFetch("https://corsproxy.io/?" + encodeURIComponent(IHIGHWAY_URL), 8000);
+    if(res.ok) html = await res.text();
+  } catch(e) {}
+
+  // ② allorigins.win
+  if(!html || html.length < 200) {
+    try {
+      statusEl.textContent="⏳ プロキシ②試行中...";
+      const res = await tryFetch("https://api.allorigins.win/get?url=" + encodeURIComponent(IHIGHWAY_URL), 10000);
+      if(res.ok) { const j = await res.json(); html = j.contents || ""; }
+    } catch(e) {}
+  }
+
+  // ③ thingproxy
+  if(!html || html.length < 200) {
+    try {
+      statusEl.textContent="⏳ プロキシ③試行中...";
+      const res = await tryFetch("https://thingproxy.freeboard.io/fetch/" + IHIGHWAY_URL, 8000);
+      if(res.ok) html = await res.text();
+    } catch(e) {}
+  }
+
+  if(!html || html.length < 200) {
+    constructionData = FALLBACK;
+    statusEl.textContent = "⚠️ 全プロキシ失敗（リンクから手動確認）";
+    statusEl.style.color = "#F6AD55";
+    bar.style.background = "#2D1A00"; bar.style.borderColor = "#92400E";
+    corsLinks.style.display = "flex";
+    renderConstructionList();
+    return;
+  }
+
+  // HTMLからテキスト抽出してAIに渡す
+  try {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const plainText = (tmp.innerText || tmp.textContent || "").replace(/\s+/g," ").slice(0, 6000);
+    const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6", max_tokens:1500,
+        messages:[{role:"user", content:
+          "以下はiHighway東海エリアの道路情報ページのテキストです。\n" +
+          "工事・規制・通行止め・渋滞情報をすべて抽出し、JSON配列のみで返してください（前置き・説明・マークダウン不要）:\n" +
+          '[{"section":"区間名","type":"工事 or 通行止め or 車線規制 or 渋滞","time":"時間帯（なければ終日）","status":"実施中 or 予定"}]\n' +
+          "情報が何もなければ空配列[]を返してください。\nテキスト:\n" + plainText
+        }]
+      })
+    });
+    const d = await apiRes.json();
+    if(d.error) throw new Error("api_" + d.error.message.slice(0,40));
+    const rawText = d.content?.map(c=>c.text||"").join("") || "[]";
+    const match = rawText.match(/\[[\s\S]*?\]/);
+    if(!match) throw new Error("no_json");
+    const parsed = JSON.parse(match[0]);
+    if(Array.isArray(parsed) && parsed.length > 0) {
+      constructionData = parsed;
+      statusEl.textContent = "✅ 自動取得済み（" + parsed.length + "件）";
+      statusEl.style.color = "#68D391";
+      bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
+    } else {
+      constructionData = FALLBACK;
+      statusEl.textContent = "✅ 取得済み（規制情報なし・初期データ表示）";
+      statusEl.style.color = "#68D391";
+      bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
+    }
+  } catch(e) {
+    constructionData = FALLBACK;
+    statusEl.textContent = "⚠️ AI解析失敗: " + (e.message||"不明").slice(0,30);
+    statusEl.style.color = "#F6AD55";
+    bar.style.background = "#2D1A00"; bar.style.borderColor = "#92400E";
+    corsLinks.style.display = "flex";
+  }
+  renderConstructionList();
+}
+
+// ===== スクショOCR =====
+let screenshotMime = "image/jpeg";
+function handleImageSelect(e){
+  const file=e.target.files?.[0]; if(!file) return;
+  screenshotMime = file.type || "image/jpeg";
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    screenshotB64=ev.target.result.split(",")[1];
+    document.getElementById("img-preview").src=ev.target.result;
+    document.getElementById("img-preview-wrap").style.display="block";
+    document.getElementById("img-label").style.display="none";
+    updateCheckBtn();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage(){
+  screenshotB64=null;
+  document.getElementById("img-preview-wrap").style.display="none";
+  document.getElementById("img-label").style.display="flex";
+  document.getElementById("check-result").style.display="none";
+  updateCheckBtn();
+}
+
+function updateCheckBtn(){
+  const btn=document.getElementById("btn-check");
+  if(screenshotB64){
+    btn.className="ready"; btn.style.background="#C05621"; btn.style.cursor="pointer";
+    btn.textContent="🔍 スクショを解析して影響チェック";
+  } else {
+    btn.className=""; btn.style.background="#2D3748"; btn.style.cursor="not-allowed";
+    btn.textContent="🔍 目的地ICまでの影響チェック";
+  }
+}
+
+async function handleCheck(){
+  if(!screenshotB64) return;
+  const btn=document.getElementById("btn-check");
+  btn.textContent="⏳ OCR＆判定中..."; btn.disabled=true;
+  const now=new Date();
+  const nowStr=now.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+  const destName=destIC?destIC.name:"（目的地未選択）";
+  const msgContent=[
+    {type:"image",source:{type:"base64",media_type:screenshotMime,data:screenshotB64}},
+    {type:"text",text:`上の画像はiHighwayの道路情報スクリーンショットです。現在時刻は${nowStr}、目的地ICは「${destName}」です。画像から渋滞・工事・規制・通行止め情報をすべて読み取り、目的地ICまでの経路に現在時刻で実際に影響があるか判定してください。時間帯指定の規制は現在時刻と照合し、時間外なら「通行可能（規制時間外）」と明記してください。以下のJSON形式のみで返してください（前置き・マークダウン不要）:{"status":"影響あり or 影響なし","items":[{"type":"工事 or 渋滞 or 通行止め","section":"区間","detail":"内容","active":true,"reason":"理由"}],"summary":"ひとことまとめ20文字以内"}`}
+  ];
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:msgContent}]})
+    });
+    const data=await res.json();
+    // APIエラーレスポンスを先にチェック
+    if(data.error){
+      renderCheckResult({status:"エラー",items:[],summary:data.error.message||"API エラー"});
+      btn.textContent="🔍 スクショを解析して影響チェック"; btn.disabled=false;
+      return;
+    }
+    const rawText=data.content?.map(c=>c.text||"").join("")||"{}";
+    // JSON部分だけ抽出（余計なテキストが混じっても対応）
+    const jsonMatch=rawText.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error("JSON not found: "+rawText.slice(0,100));
+    const result=JSON.parse(jsonMatch[0]);
+    renderCheckResult(result);
+  } catch(e){
+    renderCheckResult({status:"エラー",items:[],summary:e.message?.slice(0,40)||"判定に失敗しました"});
+  }
+  btn.textContent="🔍 スクショを解析して影響チェック"; btn.disabled=false;
+}
+
+function renderCheckResult(r){
+  const el=document.getElementById("check-result");
+  const hasEffect=r.status==="影響あり";
+  const isError  =r.status==="エラー";
+  el.style.display="block";
+  el.style.background=isError?"#1A2535":hasEffect?"#2D0F0F":"#0F2D1A";
+  el.style.borderColor=isError?"#4A5568":hasEffect?"#9B1C1C":"#065F46";
+  el.innerHTML=`
+    <div class="cr-header">
+      <span style="font-size:20px;">${isError?"❓":hasEffect?"⚠️":"✅"}</span>
+      <div>
+        <div class="cr-status" style="color:${isError?"#718096":hasEffect?"#F56565":"#68D391"};">${r.status}</div>
+        ${r.summary?`<div class="cr-summary">${r.summary}</div>`:""}
+      </div>
+    </div>
+    ${(r.items||[]).map(item=>`
+      <div class="cr-item" style="background:${item.active?"#3D1515":"#1A2535"};border-color:${item.active?"#9B1C1C":"#2D3748"};">
+        <span class="cr-item-icon">${item.active?"🔴":"🟢"}</span>
+        <div style="flex:1;">
+          <div class="cr-item-type" style="color:${item.active?"#F56565":"#68D391"};">${item.type} · ${item.section}</div>
+          <div class="cr-item-detail">${item.detail}</div>
+          <div class="cr-item-reason" style="color:${item.active?"#F6AD55":"#68D391"};">${item.reason}</div>
+        </div>
+      </div>`).join("")}
+  `;
+}
+
+// ===== 初期化 =====
+fetchIHighway();
+render();
+</script>
+</body>
+</html>
