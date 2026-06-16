@@ -442,11 +442,13 @@ function render(){
   const favSec = document.getElementById("fav-section");
   if(favorites.length>0){
     favSec.style.display="block";
-    document.getElementById("fav-list").innerHTML = favorites.map(f=>`
+    // お気に入りをインデックスでアクセスできるようにグローバルに保持
+    window._favCache = favorites;
+    document.getElementById("fav-list").innerHTML = favorites.map((f,i)=>`
       <div class="fav-item">
         <button class="fav-btn${destIC&&destIC.name===f.name?" active":""}"
           style="${destIC&&destIC.name===f.name?`background:${ROUTES[f.routeKey]?.color||"#00843D"};color:#fff;border-color:${ROUTES[f.routeKey]?.color||"#00843D"};`:""}"
-          onclick="selectIC(${JSON.stringify(f)})">${f.name}</button>
+          onclick="selectIC(window._favCache[${i}])">${f.name}</button>
         <button class="fav-del" onclick="removeFav('${f.name}')">✕</button>
       </div>
     `).join("");
@@ -462,11 +464,16 @@ function render(){
     document.getElementById("btn-map").href = buildMapsUrl(destIC);
     const favBtn = document.getElementById("btn-fav");
     const isFav  = favorites.some(f=>f.name===destIC.name);
+    const canAdd = !isFav && favorites.length < 3;
     favBtn.textContent = isFav?"⭐":"☆";
-    favBtn.className   = "btn-fav"+(isFav?" is-fav":"");
+    favBtn.onclick = toggleFav;
+    favBtn.title = isFav?"お気に入りから削除" : canAdd?"お気に入りに追加":"お気に入りは3件まで";
+    favBtn.disabled = !isFav && favorites.length >= 3;
     favBtn.style.cssText = isFav
       ? "background:#2D2A00;color:#F6E05E;border:1px solid #D69E2E;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;"
-      : "background:#1A2535;color:#A0AEC0;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;";
+      : canAdd
+        ? "background:#1A2535;color:#A0AEC0;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;"
+        : "background:#1A2535;color:#4A5568;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;font-size:16px;cursor:not-allowed;opacity:0.5;";
   } else {
     actionBar.style.display="none";
   }
