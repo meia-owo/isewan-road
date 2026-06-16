@@ -189,29 +189,29 @@ a{text-decoration:none;}
     <div id="traffic-list"></div>
   </div>
 
-  <!-- 工事・突合チェック -->
+  <!-- 工事情報（常時表示） -->
   <div id="construction-section">
-    <button id="btn-construction" onclick="toggleConstruction()">
-      <span>🚧 工事・規制 ＆ 突合チェック</span>
+    <!-- 工事リスト（常時表示） -->
+    <div style="font-size:10px;color:#90CDF4;margin:0 0 5px;">🚧 工事・規制情報（自動掲載）</div>
+    <div id="construction-list"></div>
+
+    <!-- iHighway取得ステータス -->
+    <div id="fetch-status-bar" style="margin-top:8px;">
+      <div id="fetch-status-text">📋 工事・規制情報（初期データ）</div>
+      <button id="btn-refetch" onclick="fetchIHighway()">🔄 再取得</button>
+    </div>
+    <div id="cors-links">
+      <a class="cors-link" href="https://www.c-ihighway.jp/pcsite/map?area=area05" target="_blank" style="border:1px solid #F6AD55;color:#F6AD55;">🚦 iHighwayを開く</a>
+      <a class="cors-link" href="https://www.c-nexco.co.jp/traffic/construction/" target="_blank" style="border:1px solid #00843D;color:#68D391;">🔗 NEXCO 工事情報</a>
+    </div>
+
+    <!-- 突合チェック（アコーディオン） -->
+    <button id="btn-construction" onclick="toggleConstruction()" style="width:100%;background:#1A2535;border:1px solid #2D3748;border-radius:8px;color:#E2E8F0;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+      <span>🔍 突合チェック（スクショOCR）</span>
       <span id="construction-arrow" style="color:#4A5568;font-size:10px;">▼</span>
     </button>
     <div id="construction-body">
-      <!-- iHighway取得ステータス -->
-      <div id="fetch-status-bar">
-        <div id="fetch-status-text">📋 工事・規制情報（初期データ）</div>
-        <button id="btn-refetch" onclick="fetchIHighway()">🔄 再取得</button>
-      </div>
-      <div id="cors-links">
-        <a class="cors-link" href="https://www.c-ihighway.jp/pcsite/map?area=area05" target="_blank" style="border:1px solid #F6AD55;color:#F6AD55;">🚦 iHighwayを開く</a>
-        <a class="cors-link" href="https://www.c-nexco.co.jp/traffic/construction/" target="_blank" style="border:1px solid #00843D;color:#68D391;">🔗 NEXCO 工事情報</a>
-      </div>
-
-      <!-- 工事リスト -->
-      <div style="font-size:10px;color:#90CDF4;margin-bottom:5px;">🚧 工事・規制情報（自動掲載）</div>
-      <div id="construction-list"></div>
-
-      <div style="border-top:1px solid #2D3748;margin:10px 0 8px;"></div>
-
+      <div style="border-top:1px solid #2D3748;margin:8px 0;"></div>
       <!-- スクショ突合チェック -->
       <div id="ocr-section">
         <div id="ocr-title">📸 突合チェック</div>
