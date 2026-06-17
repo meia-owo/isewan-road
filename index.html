@@ -46,10 +46,10 @@ a{text-decoration:none;}
 /* お気に入り */
 #fav-section{margin-bottom:8px;}
 #fav-label{font-size:10px;color:#4A5568;margin-bottom:4px;}
-#fav-list{display:flex;gap:6px;flex-wrap:wrap;}
+#fav-list{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}#fav-list::-webkit-scrollbar{display:none;}
 .fav-item{display:flex;}
-.fav-btn{border:1px solid #2D3748;border-right:none;border-radius:6px 0 0 6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;background:#1A2535;color:#E2E8F0;transition:all .15s;}
-.fav-del{border:1px solid #2D3748;border-radius:0 6px 6px 0;padding:5px 7px;font-size:10px;cursor:pointer;background:#1A2535;color:#4A5568;}
+.fav-btn{border:1px solid #2D3748;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#1A2535;color:#E2E8F0;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+
 
 /* 検索 */
 #search-wrap{position:relative;margin-bottom:10px;}
@@ -201,7 +201,7 @@ a{text-decoration:none;}
       <button id="btn-refetch" onclick="fetchIHighway()">🔄 再取得</button>
     </div>
     <div id="cors-links">
-      <a class="cors-link" href="https://www.c-ihighway.jp/pcsite/map?area=area05" target="_blank" style="border:1px solid #F6AD55;color:#F6AD55;">🚦 iHighwayを開く</a>
+      <a class="cors-link" href="https://www.c-ihighway.jp/smp/map/map_tokai.html" target="_blank" style="border:1px solid #F6AD55;color:#F6AD55;">🚦 iHighwayを開く</a>
       <a class="cors-link" href="https://www.c-nexco.co.jp/traffic/construction/" target="_blank" style="border:1px solid #00843D;color:#68D391;">🔗 NEXCO 工事情報</a>
     </div>
 
@@ -343,7 +343,7 @@ const LEVEL = {
   スムーズ:{color:"#68D391",bg:"#0F2D1A",badge:"#065F46",icon:"🟢"},
 };
 const FAV_KEY = "isewan-fav-v5";
-const IHIGHWAY_URL = "https://www.c-ihighway.jp/pcsite/map?area=area05";
+const IHIGHWAY_URL = "https://www.c-ihighway.jp/smp/map/kisei_tokai.html";
 const FALLBACK = [
   {section:"伊勢湾岸 湾岸長島IC〜四日市JCT",type:"車線規制",time:"22:00〜06:00",status:"予定"},
   {section:"伊勢湾岸 飛島IC付近",type:"路肩工事",time:"終日",status:"実施中"},
@@ -445,12 +445,9 @@ function render(){
     // お気に入りをインデックスでアクセスできるようにグローバルに保持
     window._favCache = favorites;
     document.getElementById("fav-list").innerHTML = favorites.map((f,i)=>`
-      <div class="fav-item">
-        <button class="fav-btn${destIC&&destIC.name===f.name?" active":""}"
-          style="${destIC&&destIC.name===f.name?`background:${ROUTES[f.routeKey]?.color||"#00843D"};color:#fff;border-color:${ROUTES[f.routeKey]?.color||"#00843D"};`:""}"
-          onclick="selectIC(window._favCache[${i}])">${f.name}</button>
-        <button class="fav-del" onclick="removeFav('${f.name}')">✕</button>
-      </div>
+      <button class="fav-btn${destIC&&destIC.name===f.name?" active":""}"
+        style="${destIC&&destIC.name===f.name?`background:${ROUTES[f.routeKey]?.color||"#00843D"};color:#fff;border-color:${ROUTES[f.routeKey]?.color||"#00843D"};`:""}"
+        onclick="selectIC(window._favCache[${i}])">${f.name}</button>
     `).join("");
   } else {
     favSec.style.display="none";
@@ -464,11 +461,11 @@ function render(){
     document.getElementById("btn-map").href = buildMapsUrl(destIC);
     const favBtn = document.getElementById("btn-fav");
     const isFav  = favorites.some(f=>f.name===destIC.name);
-    const canAdd = !isFav && favorites.length < 3;
+    const canAdd = !isFav && favorites.length < 6;
     favBtn.textContent = isFav?"⭐":"☆";
     favBtn.onclick = toggleFav;
     favBtn.title = isFav?"お気に入りから削除" : canAdd?"お気に入りに追加":"お気に入りは3件まで";
-    favBtn.disabled = !isFav && favorites.length >= 3;
+    favBtn.disabled = !isFav && favorites.length >= 6;
     favBtn.style.cssText = isFav
       ? "background:#2D2A00;color:#F6E05E;border:1px solid #D69E2E;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;"
       : canAdd
@@ -588,7 +585,7 @@ function toggleFav(){
   if(isFav){
     favorites = favorites.filter(f=>f.name!==destIC.name);
   } else {
-    if(favorites.length>=3) return;
+    if(favorites.length>=6) return;
     favorites.push({...destIC, routeKey:activeRoute});
   }
   saveFavs(); render();
@@ -650,7 +647,14 @@ document.getElementById("input-dest").addEventListener("input", e=>{
 });
 document.addEventListener("click",e=>{ if(!e.target.closest("#search-wrap")) document.getElementById("suggestions").style.display="none"; });
 
-// ===== iHighway取得（プロキシ順番試し） =====
+// ===== iHighway取得（複数URL並列・プロキシフォールバック） =====
+// 取得対象URL（伊勢湾岸周辺の全路線をカバー）
+const IHIGHWAY_URLS = [
+  "https://www.c-ihighway.jp/smp/map/kisei_tokai.html",  // 東海エリア全般（東名阪・新名神・伊勢道など）
+  "https://www.c-ihighway.jp/smp/cgi/kisei.fcgi?sid=1070", // 東名阪道・伊勢道リアルタイム渋滞
+  "https://www.c-ihighway.jp/smp/cgi/kisei.fcgi?sid=1010_02", // 東名・名神渋滞
+];
+
 async function tryFetch(url, timeoutMs){
   const ctrl = new AbortController();
   const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
@@ -661,50 +665,57 @@ async function tryFetch(url, timeoutMs){
   } catch(e) { clearTimeout(timer); throw e; }
 }
 
+// 1つのURLをプロキシ経由で取得（複数プロキシを順番に試す）
+async function fetchOneUrl(targetUrl){
+  const enc = encodeURIComponent(targetUrl);
+  const proxies = [
+    // テキスト直接返却型
+    async () => { const r = await tryFetch("https://corsproxy.io/?" + enc, 8000); return r.ok ? r.text() : null; },
+    async () => { const r = await tryFetch("https://api.codetabs.com/v1/proxy?quest=" + enc, 8000); return r.ok ? r.text() : null; },
+    async () => { const r = await tryFetch("https://yacdn.org/proxy/" + targetUrl, 8000); return r.ok ? r.text() : null; },
+    async () => { const r = await tryFetch("https://crossorigin.me/" + targetUrl, 8000); return r.ok ? r.text() : null; },
+    // JSON返却型
+    async () => { const r = await tryFetch("https://api.allorigins.win/get?url=" + enc, 10000); if(!r.ok) return null; const j = await r.json(); return j.contents || null; },
+  ];
+  for(const proxy of proxies){
+    try {
+      const text = await proxy();
+      if(text && text.length > 100) return text;
+    } catch(e) {}
+  }
+  return null;
+}
+
 async function fetchIHighway(){
   const statusEl  = document.getElementById("fetch-status-text");
   const corsLinks = document.getElementById("cors-links");
   const bar       = document.getElementById("fetch-status-bar");
-  statusEl.textContent="⏳ 自動取得中..."; statusEl.style.color="#718096";
+  statusEl.textContent="⏳ 複数URLから取得中..."; statusEl.style.color="#718096";
   bar.style.background="#1A2535"; bar.style.borderColor="#2D3748";
   corsLinks.style.display="none";
 
-  let html = null;
+  // 全URLを並列取得
+  statusEl.textContent="⏳ " + IHIGHWAY_URLS.length + "件のURLから並列取得中...";
+  const results = await Promise.all(IHIGHWAY_URLS.map(u => fetchOneUrl(u)));
+  const htmlParts = results.filter(r => r && r.length > 100);
 
-  // ① corsproxy.io
-  try {
-    statusEl.textContent="⏳ プロキシ①試行中...";
-    const res = await tryFetch("https://corsproxy.io/?" + encodeURIComponent(IHIGHWAY_URL), 8000);
-    if(res.ok) html = await res.text();
-  } catch(e) {}
-
-  // ② allorigins.win
-  if(!html || html.length < 200) {
-    try {
-      statusEl.textContent="⏳ プロキシ②試行中...";
-      const res = await tryFetch("https://api.allorigins.win/get?url=" + encodeURIComponent(IHIGHWAY_URL), 10000);
-      if(res.ok) { const j = await res.json(); html = j.contents || ""; }
-    } catch(e) {}
-  }
-
-  // ③ thingproxy
-  if(!html || html.length < 200) {
-    try {
-      statusEl.textContent="⏳ プロキシ③試行中...";
-      const res = await tryFetch("https://thingproxy.freeboard.io/fetch/" + IHIGHWAY_URL, 8000);
-      if(res.ok) html = await res.text();
-    } catch(e) {}
-  }
-
-  if(!html || html.length < 200) {
+  if(htmlParts.length === 0){
     constructionData = FALLBACK;
-    statusEl.textContent = "⚠️ 全プロキシ失敗（リンクから手動確認）";
+    statusEl.textContent = "⚠️ 全URL取得失敗（リンクから手動確認）";
     statusEl.style.color = "#F6AD55";
     bar.style.background = "#2D1A00"; bar.style.borderColor = "#92400E";
     corsLinks.style.display = "flex";
     renderConstructionList();
     return;
   }
+
+  statusEl.textContent = "⏳ " + htmlParts.length + "件取得成功・AI解析中...";
+
+  // 全HTMLを結合してテキスト抽出
+  const tmp = document.createElement("div");
+  tmp.innerHTML = htmlParts.join("<hr>");
+  const plainText = (tmp.innerText || tmp.textContent || "").replace(/\s+/g," ").slice(0, 8000);
+  let html = plainText; // fetchIHighway後半で使う変数名に合わせる
 
   // HTMLからテキスト抽出してAIに渡す
   try {
@@ -716,10 +727,7 @@ async function fetchIHighway(){
       body: JSON.stringify({
         model:"claude-sonnet-4-6", max_tokens:1500,
         messages:[{role:"user", content:
-          "以下はiHighway東海エリアの道路情報ページのテキストです。\n" +
-          "工事・規制・通行止め・渋滞情報をすべて抽出し、JSON配列のみで返してください（前置き・説明・マークダウン不要）:\n" +
-          '[{"section":"区間名","type":"工事 or 通行止め or 車線規制 or 渋滞","time":"時間帯（なければ終日）","status":"実施中 or 予定"}]\n' +
-          "情報が何もなければ空配列[]を返してください。\nテキスト:\n" + plainText
+          "以下はiHighway東海エリアの道路情報ページのテキストです。\n伊勢湾岸道・東名阪道・新名神・伊勢道・東海北陸道・東名・新東名に関係する工事・規制・通行止め・渋滞・事故情報のみを抽出し、JSON配列のみで返してください（前置き・マークダウン不要）:\n[{\"section\":\"区間名\",\"type\":\"工事 or 通行止め or 車線規制 or 渋滞 or 事故\",\"time\":\"時間帯（なければ終日）\",\"status\":\"実施中 or 予定\"}]\n情報が何もなければ空配列[]を返してください。\nテキスト:\n" + plainText
         }]
       })
     });
