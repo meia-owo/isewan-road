@@ -184,6 +184,9 @@ a{text-decoration:none;}
   <!-- 遅延サマリー -->
   <div id="delay-summary"></div>
 
+  <!-- 所要時間ボックス -->
+  <div id="travel-time-box" style="background:#141F2E;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid #1E2D3D;display:none;"></div>
+
   <!-- 渋滞リスト -->
   <div id="traffic-section">
     <div id="traffic-header">
@@ -459,6 +462,42 @@ const ROUTES = {
       down:[{from:"新城IC",to:"豊田東JCT",level:"渋滞",km:3.8,delay:16},{from:"新静岡IC",to:"森掛川IC",level:"混雑",km:1.9,delay:7}],
     }
   },
+  tokai_kanjyo: {
+    label:"東海環状", upLabel:"外回り（豊田東→新四日市方面）", downLabel:"内回り（新四日市→豊田東方面）", color:"#285E61",
+    ics:[
+      {name:"豊田東JCT",          order:1,  lat:35.0694,lng:137.1933},
+      {name:"豊田松平IC",         order:2,  lat:35.1012,lng:137.2134},
+      {name:"鞍ヶ池スマートIC",   order:3,  lat:35.1234,lng:137.2423},
+      {name:"豊田勘八IC",         order:4,  lat:35.1423,lng:137.2612},
+      {name:"豊田藤岡IC",         order:5,  lat:35.1623,lng:137.2134},
+      {name:"せと赤津IC",         order:6,  lat:35.2012,lng:137.1234},
+      {name:"せと品野IC",         order:7,  lat:35.2234,lng:137.0634},
+      {name:"土岐南多治見IC",     order:8,  lat:35.3012,lng:137.0234},
+      {name:"五斗蒔スマートIC",   order:9,  lat:35.3312,lng:137.0012},
+      {name:"土岐JCT",            order:10, lat:35.3534,lng:137.0123},
+      {name:"可児御嵩IC",         order:11, lat:35.4012,lng:137.0534},
+      {name:"美濃加茂IC",         order:12, lat:35.4334,lng:137.0012},
+      {name:"富加関IC",           order:13, lat:35.4612,lng:136.9534},
+      {name:"美濃関JCT",          order:14, lat:35.5412,lng:136.9123},
+      {name:"関広見IC",           order:15, lat:35.5123,lng:136.8834},
+      {name:"岐阜三輪スマートIC", order:16, lat:35.5334,lng:136.8423},
+      {name:"山県IC",             order:17, lat:35.5612,lng:136.8012},
+      {name:"岐阜IC",             order:18, lat:35.5234,lng:136.7534},
+      {name:"本巣IC",             order:19, lat:35.5012,lng:136.7012},
+      {name:"大野神戸IC",         order:20, lat:35.4712,lng:136.6534},
+      {name:"大垣西IC",           order:21, lat:35.3923,lng:136.6012},
+      {name:"養老JCT",            order:22, lat:35.3312,lng:136.5734},
+      {name:"養老IC",             order:23, lat:35.3123,lng:136.5523},
+      {name:"いなべIC",           order:24, lat:35.2234,lng:136.5734},
+      {name:"大安IC",             order:25, lat:35.0134,lng:136.6712},
+      {name:"東員IC",             order:26, lat:35.0023,lng:136.6423},
+      {name:"新四日市JCT",        order:27, lat:34.9534,lng:136.6123},
+    ],
+    traffic:{
+      up:[  {from:"富加関IC",     to:"美濃関JCT",  level:"スムーズ", km:0, delay:0}],
+      down:[{from:"新四日市JCT",  to:"東員IC",     level:"スムーズ", km:0, delay:0}],
+    }
+  },
 };
 
 const LEVEL = {
@@ -553,6 +592,96 @@ function fetchTrafficForRoute(routeKey) {
       resolve({ up, down });
     });
   });
+}
+
+// 所要時間計算（現在地→最寄りIC→目的地IC）
+let travelTimeCache = null; // { localMins, expressMins, totalMins, arrivalTime }
+
+function calcArrivalTime(totalMins){
+  const arr = new Date(Date.now() + totalMins * 60000);
+  return arr.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+}
+
+function fetchTravelTime(destIC, direction){
+  if(!destIC) return;
+  if(typeof google === "undefined") return;
+
+  const service = new google.maps.DirectionsService();
+
+  // ① 現在地 → 最寄りIC（一般道）
+  const getLocalTime = () => new Promise(resolve => {
+    if(!currentPos || !nearestIC){
+      resolve(0);
+      return;
+    }
+    service.route({
+      origin:      new google.maps.LatLng(currentPos.lat, currentPos.lng),
+      destination: new google.maps.LatLng(nearestIC.lat, nearestIC.lng),
+      travelMode:  google.maps.TravelMode.DRIVING,
+      drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+    }, (result, status) => {
+      if(status !== "OK"){ resolve(0); return; }
+      const secs = result.routes[0]?.legs[0]?.duration_in_traffic?.value
+                || result.routes[0]?.legs[0]?.duration?.value || 0;
+      resolve(Math.round(secs / 60));
+    });
+  });
+
+  // ② 最寄りIC → 目的地IC（高速）
+  const getExpressTime = () => new Promise(resolve => {
+    const origin = nearestIC || (currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null);
+    if(!origin){ resolve(0); return; }
+    service.route({
+      origin:      new google.maps.LatLng(origin.lat, origin.lng),
+      destination: new google.maps.LatLng(destIC.lat, destIC.lng),
+      travelMode:  google.maps.TravelMode.DRIVING,
+      drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+    }, (result, status) => {
+      if(status !== "OK"){ resolve(0); return; }
+      const secs = result.routes[0]?.legs[0]?.duration_in_traffic?.value
+                || result.routes[0]?.legs[0]?.duration?.value || 0;
+      resolve(Math.round(secs / 60));
+    });
+  });
+
+  Promise.all([getLocalTime(), getExpressTime()]).then(([localMins, expressMins]) => {
+    const totalMins = localMins + expressMins;
+    travelTimeCache = {
+      localMins, expressMins, totalMins,
+      arrivalTime: calcArrivalTime(totalMins)
+    };
+    renderTravelTime();
+  });
+}
+
+function renderTravelTime(){
+  const el = document.getElementById("travel-time-box");
+  if(!el) return;
+  if(!travelTimeCache || !destIC){ el.style.display="none"; return; }
+  const { localMins, expressMins, totalMins, arrivalTime } = travelTimeCache;
+  el.style.display="block";
+  el.innerHTML = `
+    <div style="font-size:10px;color:#718096;margin-bottom:6px;">⏱ 所要時間（渋滞考慮）</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+        <div style="font-size:9px;color:#718096;margin-bottom:2px;">🚗 下道</div>
+        <div style="font-size:16px;font-weight:800;color:#90CDF4;font-variant-numeric:tabular-nums;">${localMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
+        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"最寄りIC"}まで</div>
+      </div>
+      <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">＋</div>
+      <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+        <div style="font-size:9px;color:#718096;margin-bottom:2px;">🛣 高速</div>
+        <div style="font-size:16px;font-weight:800;color:#68D391;font-variant-numeric:tabular-nums;">${expressMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
+        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||""}→${destIC?.name||""}</div>
+      </div>
+      <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">=</div>
+      <div style="flex:1;background:#2D2050;border:1px solid #6B46C1;border-radius:6px;padding:8px 10px;min-width:80px;">
+        <div style="font-size:9px;color:#B794F4;margin-bottom:2px;">🏁 合計</div>
+        <div style="font-size:16px;font-weight:800;color:#D6BCFA;font-variant-numeric:tabular-nums;">${totalMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
+        <div style="font-size:9px;color:#4A5568;">到着 ${arrivalTime} 頃</div>
+      </div>
+    </div>
+  `;
 }
 
 // GPS取得＋最寄りIC表示
@@ -784,15 +913,26 @@ function render(){
 }
 
 function renderConstructionList(){
-  document.getElementById("construction-list").innerHTML = constructionData.map(item=>`
-    <div class="construction-item" style="background:${item.status==="実施中"?"#2D1A00":"#141F2E"};border-color:${item.status==="実施中"?"#92400E":"#2D3748"};">
+  const now = new Date();
+  document.getElementById("construction-list").innerHTML = constructionData.map(item=>{
+    const tc = checkTimeRange(item.time);
+    const dirBadge = item.dir ? `<span style="font-size:9px;background:#2D3748;color:#A0AEC0;border-radius:3px;padding:1px 5px;margin-left:4px;">${item.dir}</span>` : "";
+    let statusColor, statusBg, statusLabel;
+    if(tc.active){
+      statusColor="#F56565"; statusBg="#2D0F0F"; statusLabel="🔴 規制中";
+    } else if(tc.soon){
+      statusColor="#F6AD55"; statusBg="#2D1A00"; statusLabel="⚠️ まもなく開始";
+    } else {
+      statusColor="#90CDF4"; statusBg="#141F2E"; statusLabel="📅 予定";
+    }
+    return `<div class="construction-item" style="background:${statusBg};border-color:${tc.active?"#9B1C1C":tc.soon?"#92400E":"#2D3748"};">
       <div class="ci-header">
-        <span class="ci-type" style="color:${item.status==="実施中"?"#F6AD55":"#90CDF4"};">${item.status==="実施中"?"⚠️ 実施中":"📅 予定"} · ${item.type}</span>
-        <span class="ci-time">${item.time}</span>
+        <span class="ci-type" style="color:${statusColor};">${statusLabel} · ${item.type}${dirBadge}</span>
+        <span class="ci-time" style="color:${tc.active?"#F56565":tc.soon?"#F6AD55":"#718096"};">${tc.label||item.time}</span>
       </div>
       <div class="ci-section">${item.section}</div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 }
 
 // ===== 操作 =====
@@ -808,18 +948,22 @@ function setDirection(dir){ direction=dir; render(); }
 
 function clearDest(){
   destIC=null;
+  travelTimeCache=null;
   document.getElementById("input-dest").value="";
   document.getElementById("btn-clear").style.display="none";
+  document.getElementById("travel-time-box").style.display="none";
   render();
 }
 
 function selectIC(ic){
   if(ic.routeKey && ic.routeKey!==activeRoute) activeRoute=ic.routeKey;
   destIC=ic;
+  travelTimeCache=null;
   document.getElementById("input-dest").value=ic.name;
   document.getElementById("btn-clear").style.display="block";
   document.getElementById("suggestions").style.display="none";
   render();
+  fetchTravelTime(ic, direction);
 }
 
 function toggleFav(){
@@ -970,100 +1114,98 @@ async function fetchIHighway(){
   renderConstructionList();
 }
 
-// ===== 正規表現パーサー（AIなし版） =====
+// ===== 正規表現パーサー（上り下り・時刻照合対応版） =====
 function parseIHighwayText(text){
   const results = [];
-
-  // 対象路線キーワード
-  const TARGET_ROUTES = ["伊勢湾岸","東名阪","新名神","伊勢道","東海北陸","東名","新東名","名二環","紀勢"];
-
-  // 規制種別マッピング
+  const TARGET_ROUTES = ["伊勢湾岸","東名阪","新名神","伊勢道","東海北陸","東名","新東名","名二環","紀勢","名神","北陸"];
   const TYPE_MAP = {
-    "通行止": "通行止め",
-    "車線規制": "車線規制",
-    "路肩規制": "車線規制",
-    "追越車線規制": "車線規制",
-    "登坂車線規制": "車線規制",
-    "対面通行": "車線規制",
-    "第１走行規制": "車線規制",
-    "工事": "工事",
-    "作業": "工事",
-    "渋滞": "渋滞",
-    "事故": "事故",
-    "故障車": "事故",
-    "規制中": "車線規制",
+    "通行止": "通行止め", "車線規制": "車線規制", "路肩規制": "車線規制",
+    "追越車線規制": "車線規制", "登坂車線規制": "車線規制", "対面通行": "車線規制",
+    "第１走行規制": "車線規制", "工事": "工事", "作業": "工事",
+    "渋滞": "渋滞", "事故": "事故", "故障車": "事故", "規制中": "車線規制",
   };
+  const UP_WORDS   = ["上り","東京方面","名古屋方面","米原方面","富山方面","亀山方面","諏訪方面","新潟方面","草津方面"];
+  const DOWN_WORDS = ["下り","西行","大阪方面","神戸方面","伊勢方面","長野方面","西日本方面","名古屋方面以外"];
 
-  // iHighwayスマホ版のテキスト構造をパース
-  // 例: "東名阪道 (下り西行) 名古屋西IC付近 故障車 第１走行規制"
-  // 例: "東名 (上り東京方面) 日進JCT→東名三好IC 工事 路肩規制"
+  const getDir = str => UP_WORDS.some(k => str.includes(k)) ? "上り"
+                      : DOWN_WORDS.some(k => str.includes(k)) ? "下り" : "";
 
-  // 渋滞情報: "路線名 (方向) 場所 Nkm" パターン
-  const jamPattern = /([^\s（()]+(?:道|線|環|速)?)\s*[（(][^）)]*[）)]\s*([^\s　]{3,30})\s+(\d+)km/g;
+  // 渋滞（km付き）
+  const jamPat = /([^\s（()]{2,10}(?:道|線|環|速)?)[\s　]*[（(]([^）)]+)[）)][\s　]*([^\s]{3,20})[\s　]+(\d+)km/g;
   let m;
-  while((m = jamPattern.exec(text)) !== null){
-    const routeName = m[1];
-    if(!TARGET_ROUTES.some(r => routeName.includes(r))) continue;
-    results.push({
-      section: routeName + " " + m[2],
-      type: "渋滞",
-      time: "終日",
-      status: "実施中",
-      km: m[3]
-    });
+  while((m = jamPat.exec(text)) !== null){
+    if(!TARGET_ROUTES.some(r => m[1].includes(r))) continue;
+    const dir = getDir(m[2]);
+    results.push({ section: m[1]+(dir?`(${dir})`:"")+" "+m[3], type:"渋滞", time:"終日", status:"実施中", dir });
   }
 
-  // 規制・工事情報: 路線名 + 方向 + 区間 + 種別 のブロックをパース
-  // テキストを行に分割して前後の文脈で判断
-  const lines = text.split(/[\u30FB\n]/) .map(l => l.trim()).filter(l => l.length > 0);
-
-  let currentRoute = "";
-  let currentDir   = "";
-  let currentSection = "";
-  let currentKind  = "";
-
-  for(let i = 0; i < lines.length; i++){
-    const line = lines[i];
-
-    // 路線名＋方向の検出
-    const routeMatch = line.match(/^([\S]+(?:道|線|環|速|JCT)?)\s*[（(]([^）)]+)[）)]/);
-    if(routeMatch){
-      currentRoute  = routeMatch[1];
-      currentDir    = routeMatch[2];
-      currentSection = "";
-      currentKind   = "";
-      continue;
+  // 規制・工事（行ベース）
+  const lines = text.split(/[\n]/).map(l => l.trim()).filter(l => l.length > 1);
+  let cRoute = "", cDir = "", cSection = "";
+  for(const line of lines){
+    // 路線名＋方向
+    const rm = line.match(/^([^\s（(]{2,12}(?:道|阪|神|環|速)?)[\s　]*[（(]([^）)]+)[）)]/);
+    if(rm && TARGET_ROUTES.some(r => rm[1].includes(r))){
+      cRoute = rm[1]; cDir = getDir(rm[2]); cSection = ""; continue;
     }
-
-    // 区間の検出（→を含むか、IC/PA/JCT/SA名）
-    const sectionMatch = line.match(/(.+(?:IC|PA|JCT|SA|トンネル|付近|バス停).+)/);
-
-    // 種別の検出
+    // 時間帯パターン（例：22:00〜06:00）があれば time として取得
+    const timeMatch = line.match(/(\d{1,2}:\d{2}[〜~]\d{1,2}:\d{2})/);
+    const timeStr = timeMatch ? timeMatch[1] : "";
+    // 区間
+    if(line.match(/(?:IC|PA|JCT|SA|トンネル|付近|バス停)/)){
+      const kk = Object.keys(TYPE_MAP).find(k => line.includes(k));
+      if(!kk){ cSection = line; continue; }
+    }
+    // 種別
     const kindKey = Object.keys(TYPE_MAP).find(k => line.includes(k));
-
-    if(sectionMatch && !kindKey){
-      currentSection = sectionMatch[1];
-    }
-
-    if(kindKey && currentRoute){
-      if(!TARGET_ROUTES.some(r => currentRoute.includes(r))) continue;
-      const section = [currentRoute, currentDir ? `(${currentDir})` : "", currentSection || line].filter(Boolean).join(" ");
-      const type = TYPE_MAP[kindKey];
-      // 重複チェック
-      const isDup = results.some(r => r.section === section && r.type === type);
+    if(kindKey && cRoute){
+      const section = [cRoute, cDir?`(${cDir})`:"", cSection].filter(Boolean).join(" ");
+      const isDup = results.some(r => r.section===section && r.type===TYPE_MAP[kindKey]);
       if(!isDup){
         results.push({
-          section: section.slice(0, 40),
-          type,
-          time: "終日",
-          status: kindKey === "渋滞" || kindKey === "事故" || kindKey === "故障車" ? "実施中" : "予定",
+          section: section.slice(0,50),
+          type: TYPE_MAP[kindKey],
+          time: timeStr || "終日",
+          status: ["渋滞","事故","故障車"].includes(kindKey) ? "実施中" : "予定",
+          dir: cDir,
         });
       }
-      currentSection = "";
+      cSection = "";
     }
   }
+  return results.slice(0, 30);
+}
 
-  return results.slice(0, 20); // 最大20件
+// ===== 時刻照合チェック =====
+function checkTimeRange(timeStr){
+  if(!timeStr || timeStr==="終日") return { active:true, soon:false, label:"終日実施中" };
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const match = timeStr.match(/(\d{1,2}):(\d{2})[〜~](\d{1,2}):(\d{2})/);
+  if(!match) return { active:true, soon:false, label:timeStr };
+  const startMin = parseInt(match[1])*60 + parseInt(match[2]);
+  const endMin   = parseInt(match[3])*60 + parseInt(match[4]);
+  let active;
+  if(startMin <= endMin){ active = nowMin>=startMin && nowMin<endMin; }
+  else { active = nowMin>=startMin || nowMin<endMin; }
+  let minsToStart = startMin - nowMin;
+  if(minsToStart < 0) minsToStart += 1440;
+  if(active)             return { active:true,  soon:false, label:`規制中（${timeStr}）` };
+  if(minsToStart <= 60)  return { active:false, soon:true,  label:`あと約${minsToStart}分で開始（${timeStr}）` };
+  return { active:false, soon:false, label:`時間外（${timeStr}）` };
+}
+
+// 目的地ICまでの規制影響チェック
+function checkConstructionImpact(destIC, direction){
+  if(!destIC || !constructionData.length) return [];
+  const dirLabel = direction==="up" ? "上り" : "下り";
+  return constructionData.map(item => {
+    const dirMatch = !item.dir || item.dir==="" || item.dir===dirLabel;
+    if(!dirMatch) return null;
+    const timeCheck = checkTimeRange(item.time);
+    if(!timeCheck.active && !timeCheck.soon) return null;
+    return { ...item, timeCheck };
+  }).filter(Boolean);
 }
 
 // ===== スクショOCR =====
