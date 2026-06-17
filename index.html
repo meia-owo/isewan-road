@@ -134,6 +134,9 @@ a{text-decoration:none;}
 </div>
 
 <div id="main">
+  <!-- デバッグパネル（一時的） -->
+  <div id="debug-panel" style="background:#1A0A00;border:1px solid #F6AD55;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:10px;color:#F6AD55;font-family:monospace;display:none;max-height:150px;overflow-y:auto;"></div>
+
   <!-- 最寄りIC表示 -->
   <div id="nearest-ic-bar" style="background:#1A2535;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#90CDF4;display:flex;justify-content:space-between;align-items:center;">
     <span id="nearest-ic-label">📍 位置情報取得中...</span>
@@ -513,6 +516,18 @@ const FALLBACK = [
   {section:"東名阪 四日市IC",type:"夜間通行止め",time:"23:00〜05:00",status:"予定"},
 ];
 
+// ===== デバッグ =====
+function dbg(msg){
+  console.log(msg);
+  const el = document.getElementById("debug-panel");
+  if(!el) return;
+  el.style.display = "block";
+  const line = document.createElement("div");
+  line.textContent = new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) + " " + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
 // ===== Google Maps API =====
 const GOOGLE_API_KEY = "AIzaSyCcpi1JRTLzacE6ectjwTqShEPTdRjbj4w";
 
@@ -611,18 +626,18 @@ function fetchTravelTime(destIC, direction){
   // ① 現在地 → 最寄りIC（一般道）
   const getLocalTime = () => new Promise(resolve => {
     if(!currentPos || !nearestIC){
-      console.log("[下道] currentPos or nearestIC なし", currentPos, nearestIC);
+      dbg("下道: currentPos=" + JSON.stringify(currentPos) + " nearestIC=" + (nearestIC?.name||"null"));
       resolve(0);
       return;
     }
-    console.log("[下道] リクエスト開始", currentPos, "→", nearestIC.name);
+    dbg("下道開始: " + currentPos?.lat?.toFixed(4) + "," + currentPos?.lng?.toFixed(4) + " → " + nearestIC.name);
     service.route({
       origin:      new google.maps.LatLng(currentPos.lat, currentPos.lng),
       destination: new google.maps.LatLng(nearestIC.lat, nearestIC.lng),
       travelMode:  google.maps.TravelMode.DRIVING,
       drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
     }, (result, status) => {
-      console.log("[下道] status:", status, "secs:", result?.routes?.[0]?.legs?.[0]?.duration_in_traffic?.value);
+      dbg("下道結果: status=" + status + " secs=" + (result?.routes?.[0]?.legs?.[0]?.duration_in_traffic?.value || result?.routes?.[0]?.legs?.[0]?.duration?.value));
       if(status !== "OK"){ resolve(0); return; }
       const secs = result.routes[0]?.legs[0]?.duration_in_traffic?.value
                 || result.routes[0]?.legs[0]?.duration?.value || 0;
@@ -662,7 +677,7 @@ function fetchTravelTime(destIC, direction){
       }
     }
 
-    console.log("[高速] リクエスト開始", origin.lat+","+origin.lng, "→", destIC.name, "経由JCT:", waypoints.length+"件");
+    dbg("高速開始: " + origin.lat.toFixed(4) + " → " + destIC.name + " 経由" + waypoints.length + "件");
     service.route({
       origin:      new google.maps.LatLng(origin.lat, origin.lng),
       destination: new google.maps.LatLng(destIC.lat, destIC.lng),
@@ -674,8 +689,8 @@ function fetchTravelTime(destIC, direction){
         trafficModel:  google.maps.TrafficModel.BEST_GUESS
       },
     }, (result, status) => {
-      console.log("[高速] status:", status, "legs:", result?.routes?.[0]?.legs?.length);
-      if(status !== "OK"){ console.log("[高速] エラー:", status); resolve(0); return; }
+      dbg("高速結果: status=" + status + " legs=" + (result?.routes?.[0]?.legs?.length||0));
+      if(status !== "OK"){ dbg("高速エラー: " + status); resolve(0); return; }
       // 全レグの渋滞考慮時間を合計
       const legs = result.routes[0]?.legs || [];
       const totalSecs = legs.reduce((sum, leg) =>
