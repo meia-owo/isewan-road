@@ -611,15 +611,18 @@ function fetchTravelTime(destIC, direction){
   // ① 現在地 → 最寄りIC（一般道）
   const getLocalTime = () => new Promise(resolve => {
     if(!currentPos || !nearestIC){
+      console.log("[下道] currentPos or nearestIC なし", currentPos, nearestIC);
       resolve(0);
       return;
     }
+    console.log("[下道] リクエスト開始", currentPos, "→", nearestIC.name);
     service.route({
       origin:      new google.maps.LatLng(currentPos.lat, currentPos.lng),
       destination: new google.maps.LatLng(nearestIC.lat, nearestIC.lng),
       travelMode:  google.maps.TravelMode.DRIVING,
       drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
     }, (result, status) => {
+      console.log("[下道] status:", status, "secs:", result?.routes?.[0]?.legs?.[0]?.duration_in_traffic?.value);
       if(status !== "OK"){ resolve(0); return; }
       const secs = result.routes[0]?.legs[0]?.duration_in_traffic?.value
                 || result.routes[0]?.legs[0]?.duration?.value || 0;
@@ -659,6 +662,7 @@ function fetchTravelTime(destIC, direction){
       }
     }
 
+    console.log("[高速] リクエスト開始", origin.lat+","+origin.lng, "→", destIC.name, "経由JCT:", waypoints.length+"件");
     service.route({
       origin:      new google.maps.LatLng(origin.lat, origin.lng),
       destination: new google.maps.LatLng(destIC.lat, destIC.lng),
@@ -670,7 +674,8 @@ function fetchTravelTime(destIC, direction){
         trafficModel:  google.maps.TrafficModel.BEST_GUESS
       },
     }, (result, status) => {
-      if(status !== "OK"){ resolve(0); return; }
+      console.log("[高速] status:", status, "legs:", result?.routes?.[0]?.legs?.length);
+      if(status !== "OK"){ console.log("[高速] エラー:", status); resolve(0); return; }
       // 全レグの渋滞考慮時間を合計
       const legs = result.routes[0]?.legs || [];
       const totalSecs = legs.reduce((sum, leg) =>
