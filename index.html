@@ -627,20 +627,55 @@ function fetchTravelTime(destIC, direction){
     });
   });
 
-  // ② 最寄りIC → 目的地IC（高速）
+  // ② 最寄りIC → 目的地IC（高速優先・経由IC自動設定）
   const getExpressTime = () => new Promise(resolve => {
     const origin = nearestIC || (currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null);
     if(!origin){ resolve(0); return; }
+
+    // 経由すべき中継ICを自動検出（路線をまたぐ場合に対応）
+    const waypoints = [];
+    const allRouteKeys = Object.keys(ROUTES);
+
+    // 起点路線と終点路線が異なる場合、JCTを経由ICとして追加
+    const originRouteKey = nearestIC?.routeKey || activeRoute;
+    const destRouteKey   = destIC.routeKey || activeRoute;
+
+    if(originRouteKey !== destRouteKey){
+      // 2路線をつなぐJCTを探す（名前に"JCT"を含むIC）
+      const originRoute = ROUTES[originRouteKey];
+      const destRoute   = ROUTES[destRouteKey];
+      if(originRoute && destRoute){
+        // 起点路線のJCTのうち、終点路線にも同名があるものを経由点に
+        originRoute.ics.forEach(ic => {
+          if(!ic.name.includes("JCT")) return;
+          const matched = destRoute.ics.find(d => d.name === ic.name);
+          if(matched){
+            waypoints.push({
+              location: new google.maps.LatLng(ic.lat, ic.lng),
+              stopover: false
+            });
+          }
+        });
+      }
+    }
+
     service.route({
       origin:      new google.maps.LatLng(origin.lat, origin.lng),
       destination: new google.maps.LatLng(destIC.lat, destIC.lng),
+      waypoints,
       travelMode:  google.maps.TravelMode.DRIVING,
-      drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+      avoidFerries: true,
+      drivingOptions: {
+        departureTime: new Date(),
+        trafficModel:  google.maps.TrafficModel.BEST_GUESS
+      },
     }, (result, status) => {
       if(status !== "OK"){ resolve(0); return; }
-      const secs = result.routes[0]?.legs[0]?.duration_in_traffic?.value
-                || result.routes[0]?.legs[0]?.duration?.value || 0;
-      resolve(Math.round(secs / 60));
+      // 全レグの渋滞考慮時間を合計
+      const legs = result.routes[0]?.legs || [];
+      const totalSecs = legs.reduce((sum, leg) =>
+        sum + (leg.duration_in_traffic?.value || leg.duration?.value || 0), 0);
+      resolve(Math.round(totalSecs / 60));
     });
   });
 
@@ -654,11 +689,24 @@ function fetchTravelTime(destIC, direction){
   });
 }
 
+function showTravelTimeLoading(){
+  const el = document.getElementById("travel-time-box");
+  if(!el || !destIC) return;
+  el.style.display="block";
+  el.innerHTML = `
+    <div style="font-size:10px;color:#718096;margin-bottom:6px;">⏱ 所要時間（渋滞考慮）</div>
+    <div style="display:flex;gap:8px;align-items:center;color:#4A5568;font-size:12px;padding:8px 0;">
+      <span style="animation:spin 1s linear infinite;display:inline-block;">🔄</span> 計算中...
+    </div>`;
+}
+
 function renderTravelTime(){
   const el = document.getElementById("travel-time-box");
   if(!el) return;
   if(!travelTimeCache || !destIC){ el.style.display="none"; return; }
   const { localMins, expressMins, totalMins, arrivalTime } = travelTimeCache;
+  // 0分はまだ取得できてない可能性があるのでスキップ
+  if(totalMins === 0) return;
   el.style.display="block";
   el.innerHTML = `
     <div style="font-size:10px;color:#718096;margin-bottom:6px;">⏱ 所要時間（渋滞考慮）</div>
@@ -666,19 +714,19 @@ function renderTravelTime(){
       <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
         <div style="font-size:9px;color:#718096;margin-bottom:2px;">🚗 下道</div>
         <div style="font-size:16px;font-weight:800;color:#90CDF4;font-variant-numeric:tabular-nums;">${localMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
-        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"最寄りIC"}まで</div>
+        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"現在地"}まで</div>
       </div>
       <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">＋</div>
       <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
         <div style="font-size:9px;color:#718096;margin-bottom:2px;">🛣 高速</div>
         <div style="font-size:16px;font-weight:800;color:#68D391;font-variant-numeric:tabular-nums;">${expressMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
-        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||""}→${destIC?.name||""}</div>
+        <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"起点"}→${destIC?.name||""}</div>
       </div>
       <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">=</div>
       <div style="flex:1;background:#2D2050;border:1px solid #6B46C1;border-radius:6px;padding:8px 10px;min-width:80px;">
         <div style="font-size:9px;color:#B794F4;margin-bottom:2px;">🏁 合計</div>
         <div style="font-size:16px;font-weight:800;color:#D6BCFA;font-variant-numeric:tabular-nums;">${totalMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
-        <div style="font-size:9px;color:#4A5568;">到着 ${arrivalTime} 頃</div>
+        <div style="font-size:9px;color:#B794F4;font-weight:700;">到着 ${arrivalTime} 頃</div>
       </div>
     </div>
   `;
@@ -963,6 +1011,7 @@ function selectIC(ic){
   document.getElementById("btn-clear").style.display="block";
   document.getElementById("suggestions").style.display="none";
   render();
+  showTravelTimeLoading();
   fetchTravelTime(ic, direction);
 }
 
