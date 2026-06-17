@@ -118,6 +118,7 @@ a{text-decoration:none;}
 .cr-item-detail{font-size:11px;color:#E2E8F0;margin-bottom:2px;}
 .cr-item-reason{font-size:10px;font-style:italic;}
 </style>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcpi1JRTLzacE6ectjwTqShEPTdRjbj4w&libraries=directions" async defer></script>
 </head>
 <body>
 
@@ -133,6 +134,12 @@ a{text-decoration:none;}
 </div>
 
 <div id="main">
+  <!-- 最寄りIC表示 -->
+  <div id="nearest-ic-bar" style="background:#1A2535;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#90CDF4;display:flex;justify-content:space-between;align-items:center;">
+    <span id="nearest-ic-label">📍 位置情報取得中...</span>
+    <button onclick="initGeolocation()" style="background:transparent;border:1px solid #2D3748;border-radius:4px;color:#718096;font-size:10px;padding:2px 8px;cursor:pointer;">🔄 更新</button>
+  </div>
+
   <!-- 路線タブ -->
   <div id="route-tabs"></div>
 
@@ -467,25 +474,144 @@ const FALLBACK = [
   {section:"東名阪 四日市IC",type:"夜間通行止め",time:"23:00〜05:00",status:"予定"},
 ];
 
+// ===== Google Maps API =====
+const GOOGLE_API_KEY = "AIzaSyCcpi1JRTLzacE6ectjwTqShEPTdRjbj4w";
+
 // ===== 状態 =====
-let activeRoute = "isewan";
-let direction   = "down";
-let destIC      = null;
+let activeRoute  = "isewan";
+let direction    = "down";
+let destIC       = null;
+let currentPos   = null; // { lat, lng }
+let nearestIC    = null; // 最寄りIC
 let traffic     = {};
 let favorites   = [];
 let constructionData = [...FALLBACK];
 let screenshotB64    = null;
 
-// トラフィックをルートから初期化
+// トラフィックを空で初期化（Google Maps APIから取得）
 Object.keys(ROUTES).forEach(k => {
-  const r = ROUTES[k];
-  traffic[k] = {
-    up:   r.traffic.up.map(s => ({...s})),
-    down: r.traffic.down.map(s => ({...s})),
-  };
+  traffic[k] = { up: [], down: [] };
 });
 
+// Maps JavaScript API DirectionsServiceで渋滞情報を取得
+function fetchTrafficForRoute(routeKey) {
+  return new Promise(resolve => {
+    if (typeof google === "undefined") { resolve({ up: [], down: [] }); return; }
+    const route = ROUTES[routeKey];
+    if (!route || route.ics.length < 2) { resolve({ up: [], down: [] }); return; }
+    const ics = route.ics;
+    const step = Math.max(1, Math.ceil((ics.length - 2) / 6));
+    const midICs = ics.slice(1, -1).filter((_, i) => i % step === 0).slice(0, 6);
+    const legICs = [ics[0], ...midICs, ics[ics.length-1]];
+
+    const service = new google.maps.DirectionsService();
+    // 下り・上りを並列取得
+    const parseLegs = (legs, legICs) => {
+      const results = [];
+      legs.forEach((leg, i) => {
+        const fromIC = legICs[i];
+        const toIC   = legICs[i + 1];
+        if (!fromIC || !toIC) return;
+        const normalSecs  = leg.duration?.value || 0;
+        const trafficSecs = leg.duration_in_traffic?.value || normalSecs;
+        const delayMin    = Math.max(0, Math.round((trafficSecs - normalSecs) / 60));
+        const distKm      = +((leg.distance?.value || 0) / 1000).toFixed(1);
+        let level = "スムーズ";
+        if (delayMin >= 10) level = "渋滞";
+        else if (delayMin >= 3) level = "混雑";
+        if (level !== "スムーズ") {
+          results.push({ from: fromIC.name, to: toIC.name, level, km: distKm, delay: delayMin });
+        }
+      });
+      return results;
+    };
+
+    const makeRequest = (orig, dest, wps, icList) => new Promise(res2 => {
+      service.route({
+        origin:      new google.maps.LatLng(orig.lat, orig.lng),
+        destination: new google.maps.LatLng(dest.lat, dest.lng),
+        waypoints:   wps.map(ic => ({ location: new google.maps.LatLng(ic.lat, ic.lng), stopover: false })),
+        travelMode:  google.maps.TravelMode.DRIVING,
+        drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+      }, (result, status) => {
+        if (status !== "OK") { res2([]); return; }
+        res2(parseLegs(result.routes[0]?.legs || [], icList));
+      });
+    });
+
+    // 下り（起点→終点）
+    const downPromise = makeRequest(ics[0], ics[ics.length-1], midICs, legICs);
+
+    // 上り（終点→起点、ICリストを逆順に）
+    const revICs    = [...ics].reverse();
+    const revStep   = Math.max(1, Math.ceil((revICs.length - 2) / 6));
+    const revMidICs = revICs.slice(1, -1).filter((_, i) => i % revStep === 0).slice(0, 6);
+    const revLegICs = [revICs[0], ...revMidICs, revICs[revICs.length-1]];
+    const upPromise = makeRequest(revICs[0], revICs[revICs.length-1], revMidICs, revLegICs);
+
+    Promise.all([downPromise, upPromise]).then(([down, up]) => {
+      resolve({ up, down });
+    });
+  });
+}
+
+// GPS取得＋最寄りIC表示
+function initGeolocation() {
+  const el = document.getElementById("nearest-ic-label");
+  if (!navigator.geolocation) {
+    if (el) el.textContent = "位置情報非対応";
+    return;
+  }
+  if (el) el.textContent = "📍 取得中...";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      nearestIC  = findNearestIC(currentPos.lat, currentPos.lng);
+      if (el && nearestIC) {
+        el.textContent = "📍 " + nearestIC.name + " 付近（" + nearestIC.dist.toFixed(1) + "km）";
+      }
+      render();
+    },
+    err => {
+      if (el) el.textContent = "📍 位置情報取得失敗";
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+async function fetchAllTraffic() {
+  const keys = Object.keys(ROUTES);
+  const results = await Promise.all(keys.map(k => fetchTrafficForRoute(k)));
+  keys.forEach((k, i) => { traffic[k] = results[i]; });
+}
+
 // ===== ユーティリティ =====
+// ハバーサイン公式（2点間の距離をkm単位で返す）
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 全路線のICから最寄りICを返す
+function findNearestIC(lat, lng) {
+  let nearest = null;
+  let minDist = Infinity;
+  Object.entries(ROUTES).forEach(([routeKey, route]) => {
+    route.ics.forEach(ic => {
+      const dist = haversine(lat, lng, ic.lat, ic.lng);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = { ...ic, routeKey, routeLabel: route.label, dist };
+      }
+    });
+  });
+  return nearest;
+}
+
 const fmtTime = d => d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const worstLevel = segs => {
   if(segs.some(s=>s.level==="渋滞")) return "渋滞";
@@ -606,7 +732,7 @@ function render(){
       sumEl.innerHTML=`
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:10px;color:#718096;margin-bottom:4px;">現在地 → ${destIC.name}（${direction==="up"?"上り":"下り"}）</div>
+            <div style="font-size:10px;color:#718096;margin-bottom:4px;">${nearestIC ? nearestIC.name : "現在地"} → ${destIC.name}（${direction==="up"?"上り":"下り"}）</div>
             <div style="font-size:28px;font-weight:900;color:#F56565;font-variant-numeric:tabular-nums;">+ 約 ${sum.delay} 分</div>
           </div>
           <div style="text-align:right;">
@@ -719,30 +845,24 @@ function toggleConstruction(){
 }
 
 // ===== 更新 =====
-function refresh(){
+async function refresh(){
   const btn  = document.getElementById("btn-refresh");
   const icon = document.getElementById("refresh-icon");
   const txt  = document.getElementById("refresh-text");
   btn.disabled=true; icon.classList.add("spinning"); txt.textContent="更新中";
-  setTimeout(()=>{
-    Object.keys(ROUTES).forEach(k=>{
-      ["up","down"].forEach(dir=>{
-        traffic[k][dir] = traffic[k][dir].map(s=>({
-          ...s,
-          delay: s.delay>0?Math.max(1,s.delay+Math.floor(Math.random()*5)-2):0,
-          km:    s.km>0?Math.max(0.1,+(s.km+(Math.random()*0.4-0.2)).toFixed(1)):0,
-        }));
-      });
-    });
-    document.getElementById("last-updated").textContent="最終更新 "+fmtTime(new Date());
-    btn.disabled=false; icon.classList.remove("spinning"); txt.textContent="今すぐ更新";
-    render();
-  },900);
+  await fetchAllTraffic();
+  document.getElementById("last-updated").textContent="最終更新 "+fmtTime(new Date());
+  btn.disabled=false; icon.classList.remove("spinning"); txt.textContent="今すぐ更新";
+  render();
 }
 document.getElementById("btn-refresh").onclick=refresh;
 
 // 時刻初期表示
 document.getElementById("last-updated").textContent="最終更新 "+fmtTime(new Date());
+
+// Google Maps から渋滞情報を取得
+initGeolocation();
+fetchAllTraffic().then(() => render());
 
 // ===== 検索 =====
 const allICs = Object.entries(ROUTES).flatMap(([k,r])=>r.ics.map(ic=>({...ic,routeKey:k,routeLabel:r.label,routeColor:r.color})));
