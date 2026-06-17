@@ -242,11 +242,25 @@ const ROUTES = {
   isewan: {
     label:"伊勢湾岸", upLabel:"上り（豊田東方面）", downLabel:"下り（四日市方面）", color:"#00843D",
     ics:[
-      {name:"豊田東JCT",order:1,lat:35.0694,lng:137.1933},{name:"豊田南IC",order:2,lat:35.0320,lng:137.1612},
-      {name:"東海IC",order:3,lat:35.0161,lng:136.9897},{name:"大府東IC",order:4,lat:35.0001,lng:136.9761},
-      {name:"大府IC",order:5,lat:34.9856,lng:136.9623},{name:"名港中央IC",order:6,lat:35.0513,lng:136.8897},
-      {name:"飛島IC",order:7,lat:35.0821,lng:136.8412},{name:"湾岸弥富IC",order:8,lat:35.0612,lng:136.7934},
-      {name:"湾岸長島IC",order:9,lat:35.0123,lng:136.7214},{name:"四日市JCT",order:10,lat:34.9734,lng:136.6423},
+      {name:"豊田東JCT",  order:1,  lat:35.0694,lng:137.1933},
+      {name:"豊田東IC",   order:2,  lat:35.0612,lng:137.1812},
+      {name:"豊田JCT",    order:3,  lat:35.0523,lng:137.1634},
+      {name:"豊田南IC",   order:4,  lat:35.0320,lng:137.1612},
+      {name:"刈谷スマートIC", order:5, lat:34.9923,lng:137.0234},
+      {name:"豊明IC",     order:6,  lat:35.0012,lng:137.0012},
+      {name:"名古屋南IC", order:7,  lat:35.0234,lng:136.9723},
+      {name:"大府IC",     order:8,  lat:34.9856,lng:136.9623},
+      {name:"東海IC",     order:9,  lat:35.0161,lng:136.9897},
+      {name:"名港潮見IC", order:10, lat:35.0623,lng:136.9234},
+      {name:"名港中央IC", order:11, lat:35.0513,lng:136.8897},
+      {name:"飛島IC",     order:12, lat:35.0821,lng:136.8412},
+      {name:"湾岸弥富IC", order:13, lat:35.0612,lng:136.7934},
+      {name:"弥富木曽岬IC",order:14,lat:35.0423,lng:136.7623},
+      {name:"湾岸長島IC", order:15, lat:35.0123,lng:136.7214},
+      {name:"湾岸桑名IC", order:16, lat:35.0034,lng:136.6912},
+      {name:"みえ川越IC", order:17, lat:34.9912,lng:136.6712},
+      {name:"みえ朝日IC", order:18, lat:34.9823,lng:136.6534},
+      {name:"四日市JCT",  order:19, lat:34.9734,lng:136.6423},
     ],
     traffic:{
       up:[{from:"四日市JCT",to:"湾岸長島IC",level:"渋滞",km:5.1,delay:20},{from:"湾岸長島IC",to:"湾岸弥富IC",level:"混雑",km:2.4,delay:8}],
@@ -254,13 +268,23 @@ const ROUTES = {
     }
   },
   higashinankai: {
-    label:"東名阪", upLabel:"上り（名古屋西方面）", downLabel:"下り（亀山方面）", color:"#2B6CB0",
+    label:"東名阪", upLabel:"上り（名古屋西方面）", downLabel:"下り（伊勢関方面）", color:"#2B6CB0",
     ics:[
-      {name:"名古屋西JCT",order:1,lat:35.1523,lng:136.8234},{name:"弥富IC",order:2,lat:35.0934,lng:136.7612},
-      {name:"長島IC",order:3,lat:35.0456,lng:136.7023},{name:"桑名IC",order:4,lat:35.0612,lng:136.6834},
-      {name:"桑名東IC",order:5,lat:35.0523,lng:136.7112},{name:"大安IC",order:6,lat:35.0134,lng:136.6712},
-      {name:"四日市IC",order:7,lat:34.9712,lng:136.6234},{name:"四日市東IC",order:8,lat:34.9634,lng:136.6512},
-      {name:"鈴鹿IC",order:9,lat:34.8923,lng:136.5834},{name:"亀山JCT",order:10,lat:34.8534,lng:136.4523},
+      {name:"名古屋西JCT",    order:1,  lat:35.1523,lng:136.8234},
+      {name:"名古屋西IC",     order:2,  lat:35.1412,lng:136.8123},
+      {name:"蟹江IC",         order:3,  lat:35.1034,lng:136.7934},
+      {name:"弥富IC",         order:4,  lat:35.0934,lng:136.7612},
+      {name:"長島IC",         order:5,  lat:35.0456,lng:136.7023},
+      {name:"桑名東IC",       order:6,  lat:35.0523,lng:136.7112},
+      {name:"桑名IC",         order:7,  lat:35.0612,lng:136.6834},
+      {name:"四日市JCT",      order:8,  lat:34.9734,lng:136.6423},
+      {name:"四日市東IC",     order:9,  lat:34.9634,lng:136.6512},
+      {name:"四日市IC",       order:10, lat:34.9712,lng:136.6234},
+      {name:"鈴鹿IC",         order:11, lat:34.8923,lng:136.5834},
+      {name:"亀山JCT",        order:12, lat:34.8534,lng:136.4523},
+      {name:"亀山IC",         order:13, lat:34.8423,lng:136.4412},
+      {name:"亀山PAスマートIC",order:14, lat:34.8312,lng:136.4312},
+      {name:"伊勢関IC",       order:15, lat:34.8234,lng:136.4212},
     ],
     traffic:{
       up:[{from:"四日市IC",to:"桑名東IC",level:"混雑",km:2.3,delay:8}],
@@ -268,10 +292,18 @@ const ROUTES = {
     }
   },
   shinmeishin: {
-    label:"新名神", upLabel:"上り（草津方面）", downLabel:"下り（亀山西方面）", color:"#C05621",
+    label:"新名神", upLabel:"上り（神戸方面）", downLabel:"下り（四日市方面）", color:"#C05621",
     ics:[
-      {name:"新四日市JCT",order:1,lat:34.9534,lng:136.6123},{name:"亀山西JCT",order:2,lat:34.8412,lng:136.4234},
-      {name:"甲賀土山IC",order:3,lat:34.9023,lng:136.2934},{name:"甲賀信楽IC",order:4,lat:34.9312,lng:136.1823},
+      {name:"四日市JCT",       order:1,  lat:34.9734,lng:136.6423},
+      {name:"新四日市JCT",     order:2,  lat:34.9534,lng:136.6123},
+      {name:"菰野IC",          order:3,  lat:34.9212,lng:136.5234},
+      {name:"鈴鹿PAスマートIC",order:4,  lat:34.8812,lng:136.4812},
+      {name:"亀山西JCT",       order:5,  lat:34.8412,lng:136.4234},
+      {name:"甲賀土山IC",      order:6,  lat:34.9023,lng:136.2934},
+      {name:"甲南IC",          order:7,  lat:34.9212,lng:136.2123},
+      {name:"信楽IC",          order:8,  lat:34.9412,lng:136.1534},
+      {name:"大津JCT",         order:9,  lat:34.9823,lng:135.9234},
+      {name:"草津JCT",         order:10, lat:35.0123,lng:135.9012},
     ],
     traffic:{
       up:[{from:"亀山西JCT",to:"甲賀土山IC",level:"スムーズ",km:0,delay:0}],
@@ -279,12 +311,20 @@ const ROUTES = {
     }
   },
   ise: {
-    label:"伊勢道", upLabel:"上り（亀山方面）", downLabel:"下り（伊勢方面）", color:"#6B46C1",
+    label:"伊勢道", upLabel:"上り（伊勢関方面）", downLabel:"下り（伊勢方面）", color:"#6B46C1",
     ics:[
-      {name:"伊勢関IC",order:1,lat:34.8234,lng:136.4712},{name:"津IC",order:2,lat:34.7523,lng:136.5234},
-      {name:"津南IC",order:3,lat:34.7123,lng:136.5012},{name:"松阪IC",order:4,lat:34.6234,lng:136.5423},
-      {name:"多気JCT",order:5,lat:34.5712,lng:136.5634},{name:"玉城IC",order:6,lat:34.5312,lng:136.6112},
-      {name:"伊勢西IC",order:7,lat:34.4923,lng:136.6923},{name:"伊勢IC",order:8,lat:34.4823,lng:136.7123},
+      {name:"伊勢関IC",    order:1,  lat:34.8234,lng:136.4712},
+      {name:"関JCT",       order:2,  lat:34.8112,lng:136.4823},
+      {name:"芸濃IC",      order:3,  lat:34.7923,lng:136.5012},
+      {name:"津IC",        order:4,  lat:34.7523,lng:136.5234},
+      {name:"久居IC",      order:5,  lat:34.6923,lng:136.5123},
+      {name:"一志嬉野IC",  order:6,  lat:34.6512,lng:136.5012},
+      {name:"松阪IC",      order:7,  lat:34.6234,lng:136.5423},
+      {name:"勢和多気JCT", order:8,  lat:34.5812,lng:136.5534},
+      {name:"勢和多気IC",  order:9,  lat:34.5712,lng:136.5634},
+      {name:"玉城IC",      order:10, lat:34.5312,lng:136.6112},
+      {name:"伊勢西IC",    order:11, lat:34.4923,lng:136.6923},
+      {name:"伊勢IC",      order:12, lat:34.4823,lng:136.7123},
     ],
     traffic:{
       up:[{from:"松阪IC",to:"多気JCT",level:"混雑",km:3.0,delay:10}],
@@ -292,12 +332,28 @@ const ROUTES = {
     }
   },
   tokai_hokuriku: {
-    label:"東海北陸", upLabel:"上り（各務原・富山方面）", downLabel:"下り（一宮方面）", color:"#2C7A7B",
+    label:"東海北陸", upLabel:"上り（小矢部砺波方面）", downLabel:"下り（一宮方面）", color:"#2C7A7B",
     ics:[
-      {name:"一宮JCT",order:1,lat:35.3012,lng:136.7923},{name:"一宮稲沢北IC",order:2,lat:35.3134,lng:136.8012},
-      {name:"一宮西港IC",order:3,lat:35.3223,lng:136.7834},{name:"美濃IC",order:4,lat:35.5234,lng:136.9012},
-      {name:"美濃関JCT",order:5,lat:35.5412,lng:136.9123},{name:"関IC",order:6,lat:35.5023,lng:136.9234},
-      {name:"各務原IC",order:7,lat:35.3923,lng:136.9934},
+      {name:"一宮JCT",          order:1,  lat:35.3012,lng:136.7923},
+      {name:"一宮西IC",         order:2,  lat:35.3123,lng:136.7812},
+      {name:"尾西IC",           order:3,  lat:35.3234,lng:136.7634},
+      {name:"一宮木曽川IC",     order:4,  lat:35.3412,lng:136.7423},
+      {name:"岐阜各務原IC",     order:5,  lat:35.3923,lng:136.9934},
+      {name:"関IC",             order:6,  lat:35.5023,lng:136.9234},
+      {name:"美濃関JCT",        order:7,  lat:35.5412,lng:136.9123},
+      {name:"美濃IC",           order:8,  lat:35.5234,lng:136.9012},
+      {name:"郡上八幡IC",       order:9,  lat:35.7423,lng:136.9634},
+      {name:"ぎふ大和IC",       order:10, lat:35.8123,lng:136.9823},
+      {name:"白鳥IC",           order:11, lat:35.8634,lng:136.8923},
+      {name:"高鷲IC",           order:12, lat:35.9012,lng:136.8534},
+      {name:"ひるがの高原スマートIC",order:13,lat:35.9234,lng:136.8312},
+      {name:"荘川IC",           order:14, lat:36.0123,lng:136.7634},
+      {name:"飛騨清見IC",       order:15, lat:36.1234,lng:137.0234},
+      {name:"白川郷IC",         order:16, lat:36.2534,lng:136.9012},
+      {name:"五箇山IC",         order:17, lat:36.3612,lng:136.8823},
+      {name:"福光IC",           order:18, lat:36.5012,lng:136.8634},
+      {name:"南砺スマートIC",   order:19, lat:36.5312,lng:136.8423},
+      {name:"小矢部砺波JCT",    order:20, lat:36.6123,lng:136.8234},
     ],
     traffic:{
       up:[{from:"一宮JCT",to:"一宮稲沢北IC",level:"混雑",km:1.8,delay:6}],
@@ -305,16 +361,56 @@ const ROUTES = {
     }
   },
   tomei: {
-    label:"東名", upLabel:"上り（東京方面）", downLabel:"下り（名古屋方面）", color:"#D69E2E",
+    label:"東名", upLabel:"上り（東京方面）", downLabel:"下り（小牧方面）", color:"#D69E2E",
     ics:[
-      {name:"名古屋IC",order:1,lat:35.1234,lng:137.0123},{name:"豊田JCT",order:2,lat:35.0812,lng:137.1456},
-      {name:"豊田IC",order:3,lat:35.0923,lng:137.1634},{name:"岡崎IC",order:4,lat:34.9534,lng:137.1823},
-      {name:"音羽蒲郡IC",order:5,lat:34.8712,lng:137.2334},{name:"三ヶ日JCT",order:6,lat:34.8123,lng:137.5234},
-      {name:"浜松IC",order:7,lat:34.7634,lng:137.6012},{name:"浜松西IC",order:8,lat:34.7423,lng:137.6534},
-      {name:"磐田IC",order:9,lat:34.7012,lng:137.8234},{name:"袋井IC",order:10,lat:34.7234,lng:137.9123},
-      {name:"掛川IC",order:11,lat:34.7512,lng:138.0134},{name:"菊川IC",order:12,lat:34.7634,lng:138.0923},
-      {name:"相良牧之原IC",order:13,lat:34.7423,lng:138.1734},{name:"吉田IC",order:14,lat:34.7612,lng:138.2534},
-      {name:"静岡IC",order:15,lat:34.9234,lng:138.3523},
+      {name:"小牧IC",           order:1,  lat:35.3012,lng:136.9234},
+      {name:"小牧JCT",          order:2,  lat:35.2923,lng:136.9312},
+      {name:"春日井IC",         order:3,  lat:35.2534,lng:136.9723},
+      {name:"名古屋IC",         order:4,  lat:35.1234,lng:137.0123},
+      {name:"日進JCT",          order:5,  lat:35.1023,lng:137.0534},
+      {name:"東郷スマートIC",   order:6,  lat:35.0912,lng:137.0923},
+      {name:"豊田IC",           order:7,  lat:35.0923,lng:137.1634},
+      {name:"豊田JCT",          order:8,  lat:35.0812,lng:137.1456},
+      {name:"岡崎IC",           order:9,  lat:34.9534,lng:137.1823},
+      {name:"音羽蒲郡IC",       order:10, lat:34.8712,lng:137.2334},
+      {name:"豊川IC",           order:11, lat:34.8512,lng:137.3734},
+      {name:"三ヶ日JCT",        order:12, lat:34.8123,lng:137.5234},
+      {name:"三ヶ日IC",         order:13, lat:34.8034,lng:137.5434},
+      {name:"舘山寺スマートIC", order:14, lat:34.7823,lng:137.5923},
+      {name:"浜松西IC",         order:15, lat:34.7423,lng:137.6534},
+      {name:"三方原スマートIC", order:16, lat:34.7534,lng:137.6234},
+      {name:"浜松IC",           order:17, lat:34.7634,lng:137.6012},
+      {name:"遠州豊田スマートIC",order:18,lat:34.7312,lng:137.7423},
+      {name:"磐田IC",           order:19, lat:34.7012,lng:137.8234},
+      {name:"袋井IC",           order:20, lat:34.7234,lng:137.9123},
+      {name:"掛川IC",           order:21, lat:34.7512,lng:138.0134},
+      {name:"菊川IC",           order:22, lat:34.7634,lng:138.0923},
+      {name:"相良牧之原IC",     order:23, lat:34.7423,lng:138.1734},
+      {name:"吉田IC",           order:24, lat:34.7612,lng:138.2534},
+      {name:"大井川焼津藤枝スマートIC",order:25,lat:34.8012,lng:138.2923},
+      {name:"焼津IC",           order:26, lat:34.8423,lng:138.3134},
+      {name:"静岡IC",           order:27, lat:34.9234,lng:138.3523},
+      {name:"日本平スマートIC", order:28, lat:34.9612,lng:138.3823},
+      {name:"清水IC",           order:29, lat:35.0034,lng:138.4312},
+      {name:"清水JCT",          order:30, lat:35.0123,lng:138.4523},
+      {name:"富士川スマートIC", order:31, lat:35.1234,lng:138.5023},
+      {name:"富士IC",           order:32, lat:35.1523,lng:138.5234},
+      {name:"愛鷹スマートIC",   order:33, lat:35.1812,lng:138.5712},
+      {name:"沼津IC",           order:34, lat:35.1923,lng:138.6012},
+      {name:"裾野IC",           order:35, lat:35.1723,lng:138.6534},
+      {name:"駒門スマートIC",   order:36, lat:35.2012,lng:138.6823},
+      {name:"御殿場JCT",        order:37, lat:35.2323,lng:138.7123},
+      {name:"御殿場IC",         order:38, lat:35.2412,lng:138.7234},
+      {name:"足柄スマートIC",   order:39, lat:35.3012,lng:138.8234},
+      {name:"大井松田IC",       order:40, lat:35.3423,lng:138.9234},
+      {name:"秦野中井IC",       order:41, lat:35.3712,lng:139.0234},
+      {name:"伊勢原JCT",        order:42, lat:35.3923,lng:139.1023},
+      {name:"厚木IC",           order:43, lat:35.4312,lng:139.2034},
+      {name:"綾瀬スマートIC",   order:44, lat:35.4423,lng:139.3012},
+      {name:"横浜町田IC",       order:45, lat:35.4923,lng:139.3923},
+      {name:"横浜青葉IC",       order:46, lat:35.5312,lng:139.4923},
+      {name:"東名川崎IC",       order:47, lat:35.5723,lng:139.5612},
+      {name:"東京IC",           order:48, lat:35.6012,lng:139.6234},
     ],
     traffic:{
       up:[{from:"岡崎IC",to:"豊田IC",level:"混雑",km:2.5,delay:9},{from:"浜松IC",to:"浜松西IC",level:"混雑",km:1.8,delay:6}],
@@ -322,13 +418,34 @@ const ROUTES = {
     }
   },
   shin_tomei: {
-    label:"新東名", upLabel:"上り（東京方面）", downLabel:"下り（名古屋方面）", color:"#B7791F",
+    label:"新東名", upLabel:"上り（海老名南方面）", downLabel:"下り（豊田東方面）", color:"#B7791F",
     ics:[
-      {name:"豊田東JCT",order:1,lat:35.0694,lng:137.1933},{name:"新城IC",order:2,lat:34.9123,lng:137.4834},
-      {name:"浜松浜北IC",order:3,lat:34.8012,lng:137.6534},{name:"三ヶ日JCT",order:4,lat:34.8123,lng:137.5234},
-      {name:"浜松いなさJCT",order:5,lat:34.8312,lng:137.5812},{name:"浜松いなさIC",order:6,lat:34.8423,lng:137.5923},
-      {name:"浜松北IC",order:7,lat:34.8634,lng:137.6212},{name:"森掛川IC",order:8,lat:34.8412,lng:137.9534},
-      {name:"新静岡IC",order:9,lat:34.9534,lng:138.3623},{name:"新清水JCT",order:10,lat:35.0123,lng:138.4723},
+      {name:"豊田東JCT",        order:1,  lat:35.0694,lng:137.1933},
+      {name:"岡崎スマートIC",   order:2,  lat:34.9612,lng:137.2534},
+      {name:"岡崎東IC",         order:3,  lat:34.9423,lng:137.3123},
+      {name:"新城IC",           order:4,  lat:34.9123,lng:137.4834},
+      {name:"浜松いなさJCT",    order:5,  lat:34.8312,lng:137.5812},
+      {name:"浜松スマートIC",   order:6,  lat:34.8212,lng:137.6012},
+      {name:"浜松浜北IC",       order:7,  lat:34.8012,lng:137.6534},
+      {name:"新磐田スマートIC", order:8,  lat:34.7712,lng:137.7923},
+      {name:"遠州森町スマートIC",order:9, lat:34.8012,lng:137.8712},
+      {name:"森掛川IC",         order:10, lat:34.8412,lng:137.9534},
+      {name:"島田金谷IC",       order:11, lat:34.8623,lng:138.1012},
+      {name:"藤枝岡部IC",       order:12, lat:34.8923,lng:138.2312},
+      {name:"静岡スマートIC",   order:13, lat:34.9234,lng:138.3123},
+      {name:"新静岡IC",         order:14, lat:34.9534,lng:138.3623},
+      {name:"新清水JCT",        order:15, lat:35.0123,lng:138.4723},
+      {name:"新清水IC",         order:16, lat:35.0234,lng:138.4923},
+      {name:"新富士IC",         order:17, lat:35.1523,lng:138.6312},
+      {name:"駿河湾沼津スマートIC",order:18,lat:35.0923,lng:138.7234},
+      {name:"長泉沼津IC",       order:19, lat:35.1312,lng:138.7923},
+      {name:"御殿場JCT",        order:20, lat:35.2323,lng:138.7123},
+      {name:"新御殿場IC",       order:21, lat:35.2523,lng:138.7423},
+      {name:"新秦野IC",         order:22, lat:35.3712,lng:139.1234},
+      {name:"伊勢原大山IC",     order:23, lat:35.4012,lng:139.1623},
+      {name:"伊勢原JCT",        order:24, lat:35.3923,lng:139.1023},
+      {name:"厚木南IC",         order:25, lat:35.4212,lng:139.2534},
+      {name:"海老名南JCT",      order:26, lat:35.4623,lng:139.3712},
     ],
     traffic:{
       up:[{from:"浜松浜北IC",to:"三ヶ日JCT",level:"混雑",km:2.1,delay:7}],
@@ -709,53 +826,124 @@ async function fetchIHighway(){
     return;
   }
 
-  statusEl.textContent = "⏳ " + htmlParts.length + "件取得成功・AI解析中...";
+  statusEl.textContent = "⏳ " + htmlParts.length + "件取得成功・解析中...";
 
   // 全HTMLを結合してテキスト抽出
   const tmp = document.createElement("div");
   tmp.innerHTML = htmlParts.join("<hr>");
-  const plainText = (tmp.innerText || tmp.textContent || "").replace(/\s+/g," ").slice(0, 8000);
-  let html = plainText; // fetchIHighway後半で使う変数名に合わせる
+  const plainText = (tmp.innerText || tmp.textContent || "").replace(/\s+/g, " ");
 
-  // HTMLからテキスト抽出してAIに渡す
-  try {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    const plainText = (tmp.innerText || tmp.textContent || "").replace(/\s+/g," ").slice(0, 6000);
-    const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-6", max_tokens:1500,
-        messages:[{role:"user", content:
-          "以下はiHighway東海エリアの道路情報ページのテキストです。\n伊勢湾岸道・東名阪道・新名神・伊勢道・東海北陸道・東名・新東名に関係する工事・規制・通行止め・渋滞・事故情報のみを抽出し、JSON配列のみで返してください（前置き・マークダウン不要）:\n[{\"section\":\"区間名\",\"type\":\"工事 or 通行止め or 車線規制 or 渋滞 or 事故\",\"time\":\"時間帯（なければ終日）\",\"status\":\"実施中 or 予定\"}]\n情報が何もなければ空配列[]を返してください。\nテキスト:\n" + plainText
-        }]
-      })
-    });
-    const d = await apiRes.json();
-    if(d.error) throw new Error("api_" + d.error.message.slice(0,40));
-    const rawText = d.content?.map(c=>c.text||"").join("") || "[]";
-    const match = rawText.match(/\[[\s\S]*?\]/);
-    if(!match) throw new Error("no_json");
-    const parsed = JSON.parse(match[0]);
-    if(Array.isArray(parsed) && parsed.length > 0) {
-      constructionData = parsed;
-      statusEl.textContent = "✅ 自動取得済み（" + parsed.length + "件）";
-      statusEl.style.color = "#68D391";
-      bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
-    } else {
-      constructionData = FALLBACK;
-      statusEl.textContent = "✅ 取得済み（規制情報なし・初期データ表示）";
-      statusEl.style.color = "#68D391";
-      bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
-    }
-  } catch(e) {
+  // 正規表現パーサーで情報を抽出（AIなし）
+  const parsed = parseIHighwayText(plainText);
+
+  if(parsed.length > 0){
+    constructionData = parsed;
+    statusEl.textContent = "✅ 自動取得済み（" + parsed.length + "件）";
+    statusEl.style.color = "#68D391";
+    bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
+  } else {
     constructionData = FALLBACK;
-    statusEl.textContent = "⚠️ AI解析失敗: " + (e.message||"不明").slice(0,30);
-    statusEl.style.color = "#F6AD55";
-    bar.style.background = "#2D1A00"; bar.style.borderColor = "#92400E";
-    corsLinks.style.display = "flex";
+    statusEl.textContent = "✅ 取得済み（規制情報なし・初期データ表示）";
+    statusEl.style.color = "#68D391";
+    bar.style.background = "#0F2D1A"; bar.style.borderColor = "#00843D";
   }
   renderConstructionList();
+}
+
+// ===== 正規表現パーサー（AIなし版） =====
+function parseIHighwayText(text){
+  const results = [];
+
+  // 対象路線キーワード
+  const TARGET_ROUTES = ["伊勢湾岸","東名阪","新名神","伊勢道","東海北陸","東名","新東名","名二環","紀勢"];
+
+  // 規制種別マッピング
+  const TYPE_MAP = {
+    "通行止": "通行止め",
+    "車線規制": "車線規制",
+    "路肩規制": "車線規制",
+    "追越車線規制": "車線規制",
+    "登坂車線規制": "車線規制",
+    "対面通行": "車線規制",
+    "第１走行規制": "車線規制",
+    "工事": "工事",
+    "作業": "工事",
+    "渋滞": "渋滞",
+    "事故": "事故",
+    "故障車": "事故",
+    "規制中": "車線規制",
+  };
+
+  // iHighwayスマホ版のテキスト構造をパース
+  // 例: "東名阪道 (下り西行) 名古屋西IC付近 故障車 第１走行規制"
+  // 例: "東名 (上り東京方面) 日進JCT→東名三好IC 工事 路肩規制"
+
+  // 渋滞情報: "路線名 (方向) 場所 Nkm" パターン
+  const jamPattern = /([^\s（()]+(?:道|線|環|速)?)\s*[（(][^）)]*[）)]\s*([^\s　]{3,30})\s+(\d+)km/g;
+  let m;
+  while((m = jamPattern.exec(text)) !== null){
+    const routeName = m[1];
+    if(!TARGET_ROUTES.some(r => routeName.includes(r))) continue;
+    results.push({
+      section: routeName + " " + m[2],
+      type: "渋滞",
+      time: "終日",
+      status: "実施中",
+      km: m[3]
+    });
+  }
+
+  // 規制・工事情報: 路線名 + 方向 + 区間 + 種別 のブロックをパース
+  // テキストを行に分割して前後の文脈で判断
+  const lines = text.split(/[\u30FB\n]/) .map(l => l.trim()).filter(l => l.length > 0);
+
+  let currentRoute = "";
+  let currentDir   = "";
+  let currentSection = "";
+  let currentKind  = "";
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+
+    // 路線名＋方向の検出
+    const routeMatch = line.match(/^([\S]+(?:道|線|環|速|JCT)?)\s*[（(]([^）)]+)[）)]/);
+    if(routeMatch){
+      currentRoute  = routeMatch[1];
+      currentDir    = routeMatch[2];
+      currentSection = "";
+      currentKind   = "";
+      continue;
+    }
+
+    // 区間の検出（→を含むか、IC/PA/JCT/SA名）
+    const sectionMatch = line.match(/(.+(?:IC|PA|JCT|SA|トンネル|付近|バス停).+)/);
+
+    // 種別の検出
+    const kindKey = Object.keys(TYPE_MAP).find(k => line.includes(k));
+
+    if(sectionMatch && !kindKey){
+      currentSection = sectionMatch[1];
+    }
+
+    if(kindKey && currentRoute){
+      if(!TARGET_ROUTES.some(r => currentRoute.includes(r))) continue;
+      const section = [currentRoute, currentDir ? `(${currentDir})` : "", currentSection || line].filter(Boolean).join(" ");
+      const type = TYPE_MAP[kindKey];
+      // 重複チェック
+      const isDup = results.some(r => r.section === section && r.type === type);
+      if(!isDup){
+        results.push({
+          section: section.slice(0, 40),
+          type,
+          time: "終日",
+          status: kindKey === "渋滞" || kindKey === "事故" || kindKey === "故障車" ? "実施中" : "予定",
+        });
+      }
+      currentSection = "";
+    }
+  }
+
+  return results.slice(0, 20); // 最大20件
 }
 
 // ===== スクショOCR =====
