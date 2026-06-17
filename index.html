@@ -679,13 +679,70 @@ function fetchTravelTime(destIC, direction){
     });
   });
 
-  Promise.all([getLocalTime(), getExpressTime()]).then(([localMins, expressMins]) => {
-    const totalMins = localMins + expressMins;
-    travelTimeCache = {
-      localMins, expressMins, totalMins,
-      arrivalTime: calcArrivalTime(totalMins)
-    };
-    renderTravelTime();
+  // タイムアウト付きで実行（15秒）
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("timeout")), 15000)
+  );
+
+  // ① まず下道だけ先に表示
+  getLocalTime().then(localMins => {
+    const el = document.getElementById("travel-time-box");
+    if(!el || !destIC) return;
+    el.style.display = "block";
+    el.innerHTML = `
+      <div style="font-size:10px;color:#718096;margin-bottom:6px;">⏱ 所要時間（渋滞考慮）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+          <div style="font-size:9px;color:#718096;margin-bottom:2px;">🚗 下道</div>
+          <div style="font-size:16px;font-weight:800;color:#90CDF4;font-variant-numeric:tabular-nums;">${localMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
+          <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"最寄りIC"}まで</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">＋</div>
+        <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+          <div style="font-size:9px;color:#718096;margin-bottom:2px;">🛣 高速</div>
+          <div style="font-size:13px;color:#4A5568;margin-top:4px;">⏳ 計算中...</div>
+          <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||""}→${destIC?.name||""}</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">=</div>
+        <div style="flex:1;background:#2D2050;border:1px solid #6B46C1;border-radius:6px;padding:8px 10px;min-width:80px;">
+          <div style="font-size:9px;color:#B794F4;margin-bottom:2px;">🏁 合計</div>
+          <div style="font-size:13px;color:#4A5568;margin-top:4px;">⏳ 計算中...</div>
+        </div>
+      </div>`;
+
+    // ② 高速を別途計算（タイムアウト15秒）
+    const expressTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 15000)
+    );
+    Promise.race([getExpressTime(), expressTimeout])
+      .then(expressMins => {
+        const totalMins = localMins + expressMins;
+        travelTimeCache = { localMins, expressMins, totalMins, arrivalTime: calcArrivalTime(totalMins) };
+        renderTravelTime();
+      })
+      .catch(() => {
+        // 高速タイムアウト → 下道だけ確定表示＋Googleマップリンク
+        travelTimeCache = { localMins, expressMins: null, totalMins: null, arrivalTime: null };
+        const el2 = document.getElementById("travel-time-box");
+        if(!el2) return;
+        el2.innerHTML = `
+          <div style="font-size:10px;color:#718096;margin-bottom:6px;">⏱ 所要時間（渋滞考慮）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+              <div style="font-size:9px;color:#718096;margin-bottom:2px;">🚗 下道</div>
+              <div style="font-size:16px;font-weight:800;color:#90CDF4;font-variant-numeric:tabular-nums;">${localMins}<span style="font-size:10px;font-weight:400;color:#718096;">分</span></div>
+              <div style="font-size:9px;color:#4A5568;">${nearestIC?.name||"最寄りIC"}まで</div>
+            </div>
+            <div style="display:flex;align-items:center;color:#4A5568;font-size:14px;">＋</div>
+            <div style="flex:1;background:#1A2535;border-radius:6px;padding:8px 10px;min-width:80px;">
+              <div style="font-size:9px;color:#F6AD55;margin-bottom:2px;">🛣 高速</div>
+              <div style="font-size:11px;color:#F6AD55;margin-top:4px;">取得失敗</div>
+            </div>
+          </div>
+          <a href="${buildMapsUrl(destIC)}" target="_blank" style="display:block;background:#0F2D1A;border:1px solid #00843D;border-radius:8px;padding:8px 12px;color:#68D391;font-size:12px;font-weight:700;text-decoration:none;text-align:center;">
+            🗺 Googleマップで高速ルートを確認
+          </a>`;
+      });
   });
 }
 
