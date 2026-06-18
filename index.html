@@ -6,7 +6,7 @@
 <title>伊勢湾岸 道路情報</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:#101820;color:#E2E8F0;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;max-width:560px;margin:0 auto;min-height:100vh;}
+body{background:#101820;color:#E2E8F0;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;margin:0;min-height:100vh;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .spinning{animation:spin 0.9s linear infinite;display:inline-block;}
 input::placeholder,textarea::placeholder{color:#4A5568;}
@@ -117,6 +117,62 @@ a{text-decoration:none;}
 .cr-item-type{font-size:10px;font-weight:700;margin-bottom:2px;}
 .cr-item-detail{font-size:11px;color:#E2E8F0;margin-bottom:2px;}
 .cr-item-reason{font-size:10px;font-style:italic;}
+
+/* ===== タブレット対応（768px以上） ===== */
+@media (min-width: 768px) {
+  #header { padding: 12px 24px 10px; }
+  #header .header-title { font-size: 18px; }
+  #main { padding: 16px 24px 60px; max-width: 1200px; margin: 0 auto; }
+
+  /* 路線タブを大きく */
+  #route-tabs { gap: 8px; margin-bottom: 14px; }
+  .route-tab { font-size: 13px; padding: 8px 4px; }
+
+  /* 上り下りカードを大きく */
+  #direction-cards { gap: 16px; margin-bottom: 14px; }
+  .dir-card { padding: 14px 16px 12px; }
+  .dir-label { font-size: 14px; }
+  .dir-sublabel { font-size: 11px; }
+  .dir-delay { font-size: 20px; }
+
+  /* 2カラムレイアウト（左：メイン情報、右：工事・チェック） */
+  #content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* お気に入り・検索を大きく */
+  #nearest-ic-bar { padding: 10px 16px; font-size: 14px; margin-bottom: 14px; }
+  #input-dest { font-size: 15px; padding: 12px 40px 12px 14px; }
+
+  /* 渋滞リスト */
+  #traffic-section { border-radius: 12px; padding: 14px 16px; }
+  .traffic-item { padding: 12px 14px; }
+  .traffic-left .from { font-size: 14px; }
+  .traffic-right .km { font-size: 20px; }
+
+  /* 所要時間ボックス */
+  #travel-time-box { border-radius: 12px; padding: 14px 16px; }
+
+  /* 工事情報 */
+  #construction-section { border-radius: 12px; }
+  #btn-construction { padding: 14px 16px; font-size: 14px; }
+  #construction-body { padding: 0 16px 16px; }
+  .construction-item { padding: 12px 14px; }
+  .ci-section { font-size: 14px; }
+
+  /* スクショOCR */
+  #ocr-title { font-size: 13px; }
+}
+
+/* PC（1024px以上）でさらに余裕を持たせる */
+@media (min-width: 1024px) {
+  #main { padding: 20px 40px 60px; }
+  #route-tabs { gap: 10px; }
+  .route-tab { font-size: 14px; padding: 8px 6px; }
+}
 </style>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcpi1JRTLzacE6ectjwTqShEPTdRjbj4w&libraries=directions" async defer></script>
 </head>
@@ -134,6 +190,8 @@ a{text-decoration:none;}
 </div>
 
 <div id="main">
+  <div id="content-grid">
+  <div id="col-left">
   <!-- 最寄りIC表示 -->
   <div id="nearest-ic-bar" style="background:#1A2535;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#90CDF4;display:flex;justify-content:space-between;align-items:center;">
     <span id="nearest-ic-label">📍 位置情報取得中...</span>
@@ -244,6 +302,8 @@ a{text-decoration:none;}
       </div>
     </div>
   </div>
+  </div><!-- /col-right -->
+  </div><!-- /content-grid -->
 </div>
 
 <script>
@@ -252,25 +312,25 @@ const ROUTES = {
   isewan: {
     label:"伊勢湾岸", upLabel:"上り（豊田東方面）", downLabel:"下り（四日市方面）", color:"#00843D",
     ics:[
-      {name:"豊田東JCT",  order:1,  lat:35.0694,lng:137.1933},
-      {name:"豊田東IC",   order:2,  lat:35.0612,lng:137.1812},
-      {name:"豊田JCT",    order:3,  lat:35.0523,lng:137.1634},
-      {name:"豊田南IC",   order:4,  lat:35.0320,lng:137.1612},
-      {name:"刈谷スマートIC", order:5, lat:34.9923,lng:137.0234},
-      {name:"豊明IC",     order:6,  lat:35.0012,lng:137.0012},
-      {name:"名古屋南IC", order:7,  lat:35.0234,lng:136.9723},
-      {name:"大府IC",     order:8,  lat:34.9856,lng:136.9623},
-      {name:"東海IC",     order:9,  lat:35.0161,lng:136.9897},
-      {name:"名港潮見IC", order:10, lat:35.0623,lng:136.9234},
-      {name:"名港中央IC", order:11, lat:35.0513,lng:136.8897},
-      {name:"飛島IC",     order:12, lat:35.0821,lng:136.8412},
-      {name:"湾岸弥富IC", order:13, lat:35.0612,lng:136.7934},
-      {name:"弥富木曽岬IC",order:14,lat:35.0423,lng:136.7623},
-      {name:"湾岸長島IC", order:15, lat:35.0123,lng:136.7214},
-      {name:"湾岸桑名IC", order:16, lat:35.0034,lng:136.6912},
-      {name:"みえ川越IC", order:17, lat:34.9912,lng:136.6712},
-      {name:"みえ朝日IC", order:18, lat:34.9823,lng:136.6534},
-      {name:"四日市JCT",  order:19, lat:34.9734,lng:136.6423},
+      {name:"豊田東JCT",     order:1,  lat:35.0881,lng:137.2169},
+      {name:"豊田東IC",      order:2,  lat:35.0724,lng:137.1978},
+      {name:"豊田JCT",       order:3,  lat:35.0634,lng:137.1723},
+      {name:"豊田南IC",      order:4,  lat:35.0283,lng:137.0635},
+      {name:"刈谷スマートIC",order:5,  lat:34.9812,lng:136.9923},
+      {name:"豊明IC",        order:6,  lat:35.0123,lng:136.9612},
+      {name:"名古屋南IC",    order:7,  lat:35.0534,lng:136.9423},
+      {name:"大府IC",        order:8,  lat:35.0112,lng:136.9712},
+      {name:"東海IC",        order:9,  lat:35.0223,lng:136.9234},
+      {name:"名港潮見IC",    order:10, lat:35.0712,lng:136.9012},
+      {name:"名港中央IC",    order:11, lat:35.0534,lng:136.8734},
+      {name:"飛島IC",        order:12, lat:35.0923,lng:136.8234},
+      {name:"湾岸弥富IC",    order:13, lat:35.0712,lng:136.7823},
+      {name:"弥富木曽岬IC",  order:14, lat:35.0534,lng:136.7512},
+      {name:"湾岸長島IC",    order:15, lat:35.0123,lng:136.7023},
+      {name:"湾岸桑名IC",    order:16, lat:34.9934,lng:136.6712},
+      {name:"みえ川越IC",    order:17, lat:34.9812,lng:136.6534},
+      {name:"みえ朝日IC",    order:18, lat:34.9712,lng:136.6312},
+      {name:"四日市JCT",     order:19, lat:34.9612,lng:136.6123},
     ],
     traffic:{
       up:[{from:"四日市JCT",to:"湾岸長島IC",level:"渋滞",km:5.1,delay:20},{from:"湾岸長島IC",to:"湾岸弥富IC",level:"混雑",km:2.4,delay:8}],
@@ -595,7 +655,8 @@ function fetchTrafficForRoute(routeKey) {
 }
 
 // 所要時間計算（現在地→最寄りIC→目的地IC）
-let travelTimeCache = null; // { localMins, expressMins, totalMins, arrivalTime }
+let travelTimeCache    = null; // { localMins, expressMins, totalMins, arrivalTime }
+let travelRouteDetail = []; // 経路詳細
 
 function calcArrivalTime(totalMins){
   const arr = new Date(Date.now() + totalMins * 60000);
@@ -630,56 +691,51 @@ function fetchTravelTime(destIC, direction){
     });
   });
 
-  // ② 最寄りIC → 目的地IC（高速優先・経由IC自動設定）
+  // ② 最寄りIC → 目的地IC（上り下りで起点・終点を切替）
   const getExpressTime = () => new Promise(resolve => {
     const origin = nearestIC || (currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null);
     if(!origin){ resolve(0); return; }
 
-    // 経由すべき中継ICを自動検出（路線をまたぐ場合に対応）
-    const waypoints = [];
-    const allRouteKeys = Object.keys(ROUTES);
+    // 上り = 目的地IC → 現在地（逆走）、下り = 現在地 → 目的地IC
+    const isUp   = direction === "up";
+    const fromIC = isUp ? destIC  : origin;
+    const toIC   = isUp ? origin  : destIC;
 
-    // 起点路線と終点路線が異なる場合、JCTを経由ICとして追加
+    // 路線またぎJCTを経由点に追加
+    const waypoints = [];
     const originRouteKey = nearestIC?.routeKey || activeRoute;
     const destRouteKey   = destIC.routeKey || activeRoute;
-
     if(originRouteKey !== destRouteKey){
-      // 2路線をつなぐJCTを探す（名前に"JCT"を含むIC）
       const originRoute = ROUTES[originRouteKey];
       const destRoute   = ROUTES[destRouteKey];
       if(originRoute && destRoute){
-        // 起点路線のJCTのうち、終点路線にも同名があるものを経由点に
         originRoute.ics.forEach(ic => {
           if(!ic.name.includes("JCT")) return;
           const matched = destRoute.ics.find(d => d.name === ic.name);
-          if(matched){
-            waypoints.push({
-              location: new google.maps.LatLng(ic.lat, ic.lng),
-              stopover: false
-            });
-          }
+          if(matched) waypoints.push({ location: new google.maps.LatLng(ic.lat, ic.lng), stopover: false });
         });
       }
     }
 
-    console.log("高速開始: " + origin.lat.toFixed(4) + " → " + destIC.name + " 経由" + waypoints.length + "件");
     service.route({
-      origin:      new google.maps.LatLng(origin.lat, origin.lng),
-      destination: new google.maps.LatLng(destIC.lat, destIC.lng),
+      origin:      new google.maps.LatLng(fromIC.lat, fromIC.lng),
+      destination: new google.maps.LatLng(toIC.lat,   toIC.lng),
       waypoints,
       travelMode:  google.maps.TravelMode.DRIVING,
       avoidFerries: true,
-      drivingOptions: {
-        departureTime: new Date(),
-        trafficModel:  google.maps.TrafficModel.BEST_GUESS
-      },
+      drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
     }, (result, status) => {
-      console.log("高速結果: status=" + status + " legs=" + (result?.routes?.[0]?.legs?.length||0));
-      if(status !== "OK"){ console.log("高速エラー: " + status); resolve(0); return; }
-      // 全レグの渋滞考慮時間を合計
+      if(status !== "OK"){ resolve(0); return; }
       const legs = result.routes[0]?.legs || [];
       const totalSecs = legs.reduce((sum, leg) =>
         sum + (leg.duration_in_traffic?.value || leg.duration?.value || 0), 0);
+      // 経路詳細を保存
+      travelRouteDetail = legs.map(leg => ({
+        from: leg.start_address?.split(",")[0] || "",
+        to:   leg.end_address?.split(",")[0]   || "",
+        mins: Math.round((leg.duration_in_traffic?.value || leg.duration?.value || 0) / 60),
+        dist: ((leg.distance?.value || 0) / 1000).toFixed(1),
+      }));
       resolve(Math.round(totalSecs / 60));
     });
   });
@@ -769,27 +825,52 @@ function renderTravelTime(){
   const { localMins, expressMins, totalMins, arrivalTime } = travelTimeCache;
   if(totalMins === 0) return;
 
-  // 規制影響チェック
-  const impacts = checkConstructionImpact(destIC, direction);
+  // 規制影響チェック（上り・下り両方）
+  const impactsDown = checkConstructionImpact(destIC, "down");
+  const impactsUp   = checkConstructionImpact(destIC, "up");
+  const impacts     = direction === "up" ? impactsUp : impactsDown;
   const hasBlock    = impacts.some(i => i.type === "通行止め" && i.timeCheck.active);
   const hasActive   = impacts.some(i => i.timeCheck.active);
   const hasSoon     = impacts.some(i => i.timeCheck.soon);
 
-  // 警告バナー生成
+  const dirLabel    = direction === "up" ? "↑ 上り" : "↓ 下り";
+  const otherDir    = direction === "up" ? "down" : "up";
+  const otherLabel  = direction === "up" ? "↓ 下り" : "↑ 上り";
+  const otherImpacts= direction === "up" ? impactsDown : impactsUp;
+  const otherBadge  = otherImpacts.length > 0
+    ? `<span style="font-size:9px;background:#9B1C1C;color:#FCA5A5;border-radius:4px;padding:1px 5px;margin-left:4px;">規制${otherImpacts.length}件</span>` : "";
+
+  const renderImpactItems = (items) => items.map(item => `
+    <div style="background:${item.timeCheck.active?"#2D0F0F":"#2D1A00"};border-radius:6px;padding:6px 10px;margin-bottom:4px;border-left:3px solid ${item.timeCheck.active?"#F56565":"#F6AD55"};">
+      <div style="font-size:10px;font-weight:700;color:${item.timeCheck.active?"#F56565":"#F6AD55"};">
+        ${item.timeCheck.active?"🔴 規制中":"⚠️ まもなく開始"} · ${item.type}${item.dir?"（"+item.dir+"）":"（上下線）"}
+      </div>
+      <div style="font-size:11px;color:#E2E8F0;margin:2px 0;">${item.section}</div>
+      <div style="font-size:10px;color:#A0AEC0;">${item.timeCheck.label}</div>
+    </div>
+  `).join("");
+
   const warningHtml = impacts.length > 0 ? `
     <div style="margin-top:8px;border-top:1px solid #2D3748;padding-top:8px;">
-      <div style="font-size:10px;color:#718096;margin-bottom:4px;">⚠️ 経路上の規制情報</div>
-      ${impacts.map(item => `
-        <div style="background:${item.timeCheck.active?"#2D0F0F":"#2D1A00"};border-radius:6px;padding:6px 10px;margin-bottom:4px;border-left:3px solid ${item.timeCheck.active?"#F56565":"#F6AD55"};">
-          <div style="font-size:10px;font-weight:700;color:${item.timeCheck.active?"#F56565":"#F6AD55"};">
-            ${item.timeCheck.active?"🔴 規制中":"⚠️ まもなく開始"} · ${item.type}${item.dir?"（"+item.dir+"）":""}
-          </div>
-          <div style="font-size:11px;color:#E2E8F0;margin:2px 0;">${item.section}</div>
-          <div style="font-size:10px;color:#A0AEC0;">${item.timeCheck.label}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:10px;color:#718096;">⚠️ 経路上の規制情報</div>
+        <div style="display:flex;gap:4px;">
+          <button onclick="setDirection('${direction}')" style="font-size:9px;background:${direction===direction?"#2D3748":"transparent"};color:#E2E8F0;border:1px solid #4A5568;border-radius:4px;padding:2px 8px;cursor:pointer;">${dirLabel}</button>
+          <button onclick="setDirection('${otherDir}')" style="font-size:9px;background:transparent;color:#718096;border:1px solid #2D3748;border-radius:4px;padding:2px 8px;cursor:pointer;">${otherLabel}${otherBadge}</button>
         </div>
-      `).join("")}
+      </div>
+      ${renderImpactItems(impacts)}
       ${hasBlock ? `<div style="font-size:10px;color:#F56565;margin-top:4px;font-weight:700;">🚫 通行止めのため実際の所要時間は異なる可能性があります</div>` : ""}
-    </div>` : "";
+    </div>` : `
+    <div style="margin-top:8px;border-top:1px solid #2D3748;padding-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:10px;color:#68D391;">✅ 経路上の規制なし</div>
+        <div style="display:flex;gap:4px;">
+          <button onclick="setDirection('${direction}')" style="font-size:9px;background:#2D3748;color:#E2E8F0;border:1px solid #4A5568;border-radius:4px;padding:2px 8px;cursor:pointer;">${dirLabel}</button>
+          <button onclick="setDirection('${otherDir}')" style="font-size:9px;background:transparent;color:#718096;border:1px solid #2D3748;border-radius:4px;padding:2px 8px;cursor:pointer;">${otherLabel}${otherBadge}</button>
+        </div>
+      </div>
+    </div>`;
 
   // 合計ボックスの色（規制ありなら警告色）
   const totalBg     = hasBlock  ? "#2D1A00" : "#2D2050";
@@ -820,6 +901,17 @@ function renderTravelTime(){
       </div>
     </div>
     ${warningHtml}
+    ${travelRouteDetail.length > 0 ? `
+    <div style="margin-top:8px;border-top:1px solid #2D3748;padding-top:8px;">
+      <div style="font-size:10px;color:#718096;margin-bottom:4px;">🗺 経路の根拠（高速区間）</div>
+      ${travelRouteDetail.map((leg,i) => `
+        <div style="font-size:10px;color:#A0AEC0;margin-bottom:3px;">
+          <span style="color:#68D391;">${leg.from.split(",")[0]}</span>
+          → <span style="color:#68D391;">${leg.to.split(",")[0]}</span>
+          <span style="color:#718096;margin-left:4px;">${leg.mins}分 / ${leg.dist}km</span>
+        </div>
+      `).join("")}
+    </div>` : ""}
   `;
 }
 
@@ -1083,7 +1175,13 @@ function setRoute(key){
   render();
 }
 
-function setDirection(dir){ direction=dir; render(); }
+function setDirection(dir){
+  direction=dir;
+  travelTimeCache=null;
+  travelRouteDetail=[];
+  render();
+  if(destIC){ showTravelTimeLoading(); fetchTravelTime(destIC, dir); }
+}
 
 function clearDest(){
   destIC=null;
@@ -1103,6 +1201,7 @@ function selectIC(ic){
   document.getElementById("suggestions").style.display="none";
   render();
   showTravelTimeLoading();
+  travelRouteDetail = [];
   fetchTravelTime(ic, direction);
 }
 
