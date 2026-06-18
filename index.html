@@ -193,9 +193,14 @@ a{text-decoration:none;}
   <div id="content-grid">
   <div id="col-left">
   <!-- 最寄りIC表示 -->
-  <div id="nearest-ic-bar" style="background:#1A2535;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#90CDF4;display:flex;justify-content:space-between;align-items:center;">
-    <span id="nearest-ic-label">📍 位置情報取得中...</span>
-    <button onclick="initGeolocation()" style="background:transparent;border:1px solid #2D3748;border-radius:4px;color:#718096;font-size:10px;padding:2px 8px;cursor:pointer;">🔄 更新</button>
+  <div id="nearest-ic-bar" style="background:#1A2535;border:1px solid #2D3748;border-radius:8px;padding:8px 12px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <span style="font-size:10px;color:#718096;">📍 最寄りIC候補</span>
+      <button onclick="initGeolocation()" style="background:transparent;border:1px solid #2D3748;border-radius:4px;color:#718096;font-size:10px;padding:2px 8px;cursor:pointer;">🔄 更新</button>
+    </div>
+    <div id="nearest-ic-candidates" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:#718096;">位置情報取得中...</span>
+    </div>
   </div>
 
   <!-- 路線タブ -->
@@ -581,7 +586,8 @@ let activeRoute  = "isewan";
 let direction    = "down";
 let destIC       = null;
 let currentPos   = null; // { lat, lng }
-let nearestIC    = null; // 最寄りIC
+let nearestIC          = null;  // 選択中の最寄りIC
+let nearestICCandidates = [];   // 最寄りIC候補リスト
 let traffic     = {};
 let favorites   = [];
 let constructionData = [...FALLBACK];
@@ -691,36 +697,19 @@ function fetchTravelTime(destIC, direction){
     });
   });
 
-  // ② 最寄りIC → 目的地IC（上り下りで起点・終点を切替）
+  // ② 最寄りIC → 目的地IC（Googleに経路を全部任せる）
   const getExpressTime = () => new Promise(resolve => {
     const origin = nearestIC || (currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null);
     if(!origin){ resolve(0); return; }
 
-    // 上り = 目的地IC → 現在地（逆走）、下り = 現在地 → 目的地IC
+    // 上り = 目的地IC → 現在地、下り = 現在地 → 目的地IC
     const isUp   = direction === "up";
-    const fromIC = isUp ? destIC  : origin;
-    const toIC   = isUp ? origin  : destIC;
-
-    // 路線またぎJCTを経由点に追加
-    const waypoints = [];
-    const originRouteKey = nearestIC?.routeKey || activeRoute;
-    const destRouteKey   = destIC.routeKey || activeRoute;
-    if(originRouteKey !== destRouteKey){
-      const originRoute = ROUTES[originRouteKey];
-      const destRoute   = ROUTES[destRouteKey];
-      if(originRoute && destRoute){
-        originRoute.ics.forEach(ic => {
-          if(!ic.name.includes("JCT")) return;
-          const matched = destRoute.ics.find(d => d.name === ic.name);
-          if(matched) waypoints.push({ location: new google.maps.LatLng(ic.lat, ic.lng), stopover: false });
-        });
-      }
-    }
+    const fromIC = isUp ? destIC : origin;
+    const toIC   = isUp ? origin : destIC;
 
     service.route({
       origin:      new google.maps.LatLng(fromIC.lat, fromIC.lng),
       destination: new google.maps.LatLng(toIC.lat,   toIC.lng),
-      waypoints,
       travelMode:  google.maps.TravelMode.DRIVING,
       avoidFerries: true,
       drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
@@ -729,12 +718,13 @@ function fetchTravelTime(destIC, direction){
       const legs = result.routes[0]?.legs || [];
       const totalSecs = legs.reduce((sum, leg) =>
         sum + (leg.duration_in_traffic?.value || leg.duration?.value || 0), 0);
-      // 経路詳細を保存
+      // 経路詳細を保存（Googleが選んだルートの概要）
       travelRouteDetail = legs.map(leg => ({
         from: leg.start_address?.split(",")[0] || "",
         to:   leg.end_address?.split(",")[0]   || "",
         mins: Math.round((leg.duration_in_traffic?.value || leg.duration?.value || 0) / 60),
         dist: ((leg.distance?.value || 0) / 1000).toFixed(1),
+        summary: result.routes[0]?.summary || "",
       }));
       resolve(Math.round(totalSecs / 60));
     });
@@ -904,15 +894,47 @@ function renderTravelTime(){
     ${travelRouteDetail.length > 0 ? `
     <div style="margin-top:8px;border-top:1px solid #2D3748;padding-top:8px;">
       <div style="font-size:10px;color:#718096;margin-bottom:4px;">🗺 経路の根拠（高速区間）</div>
+      ${travelRouteDetail.length > 0 && travelRouteDetail[0].summary ? `
+        <div style="font-size:11px;color:#90CDF4;margin-bottom:4px;font-weight:600;">
+          📍 ${travelRouteDetail[0].summary}
+        </div>` : ""}
       ${travelRouteDetail.map((leg,i) => `
         <div style="font-size:10px;color:#A0AEC0;margin-bottom:3px;">
-          <span style="color:#68D391;">${leg.from.split(",")[0]}</span>
-          → <span style="color:#68D391;">${leg.to.split(",")[0]}</span>
+          <span style="color:#68D391;">${leg.from}</span>
+          → <span style="color:#68D391;">${leg.to}</span>
           <span style="color:#718096;margin-left:4px;">${leg.mins}分 / ${leg.dist}km</span>
         </div>
       `).join("")}
     </div>` : ""}
   `;
+}
+
+// 最寄りICバーを描画
+function renderNearestICBar(){
+  const el = document.getElementById("nearest-ic-candidates");
+  if(!el) return;
+  if(!nearestICCandidates.length){
+    el.innerHTML = '<span style="font-size:12px;color:#718096;">取得失敗</span>';
+    return;
+  }
+  el.innerHTML = nearestICCandidates.map((ic, i) => `
+    <button onclick="selectNearestIC(${i})"
+      style="background:${nearestIC?.name===ic.name ? ic.routeColor||'#00843D' : '#0F1820'};
+             color:${nearestIC?.name===ic.name ? '#fff' : '#A0AEC0'};
+             border:1px solid ${nearestIC?.name===ic.name ? ic.routeColor||'#00843D' : '#2D3748'};
+             border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;">
+      ${ic.name}
+      <span style="font-size:9px;opacity:0.8;margin-left:4px;">${ic.dist.toFixed(1)}km</span>
+      <span style="font-size:9px;background:${ic.routeColor||'#4A5568'}33;color:${ic.routeColor||'#A0AEC0'};border-radius:3px;padding:1px 4px;margin-left:2px;">${ic.routeLabel}</span>
+    </button>
+  `).join("");
+}
+
+function selectNearestIC(idx){
+  nearestIC = nearestICCandidates[idx];
+  renderNearestICBar();
+  if(destIC){ travelTimeCache=null; travelRouteDetail=[]; showTravelTimeLoading(); fetchTravelTime(destIC, direction); }
+  render();
 }
 
 // GPS取得＋最寄りIC表示
@@ -926,14 +948,14 @@ function initGeolocation() {
   navigator.geolocation.getCurrentPosition(
     pos => {
       currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      nearestIC  = findNearestIC(currentPos.lat, currentPos.lng);
-      if (el && nearestIC) {
-        el.textContent = "📍 " + nearestIC.name + " 付近（" + nearestIC.dist.toFixed(1) + "km）";
-      }
+      nearestICCandidates = findNearestICs(currentPos.lat, currentPos.lng, 2);
+      nearestIC  = nearestICCandidates[0] || null;
+      renderNearestICBar();
       render();
     },
     err => {
-      if (el) el.textContent = "📍 位置情報取得失敗";
+      const el2 = document.getElementById("nearest-ic-candidates");
+      if(el2) el2.innerHTML = '<span style="font-size:12px;color:#F6AD55;">位置情報取得失敗</span>';
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
@@ -956,20 +978,27 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// 全路線のICから最寄りICを返す
-function findNearestIC(lat, lng) {
-  let nearest = null;
-  let minDist = Infinity;
+// 全路線のICから最寄りIC TOP2を返す
+function findNearestICs(lat, lng, topN = 2) {
+  const candidates = [];
   Object.entries(ROUTES).forEach(([routeKey, route]) => {
     route.ics.forEach(ic => {
       const dist = haversine(lat, lng, ic.lat, ic.lng);
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = { ...ic, routeKey, routeLabel: route.label, dist };
-      }
+      candidates.push({ ...ic, routeKey, routeLabel: route.label, routeColor: route.color, dist });
     });
   });
-  return nearest;
+  candidates.sort((a, b) => a.dist - b.dist);
+  // 同じ名前のICは1件にまとめる
+  const seen = new Set();
+  return candidates.filter(ic => {
+    if(seen.has(ic.name)) return false;
+    seen.add(ic.name);
+    return true;
+  }).slice(0, topN);
+}
+
+function findNearestIC(lat, lng) {
+  return findNearestICs(lat, lng, 1)[0] || null;
 }
 
 const fmtTime = d => d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
